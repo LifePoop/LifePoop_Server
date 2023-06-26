@@ -18,7 +18,7 @@ export class Post {
   @Column()
   shape: number;
 
-  @Column({ length: 20 })
+  @Column()
   writerId: number;
 
   @ManyToOne(() => User, (user) => user.post, {
@@ -26,6 +26,6 @@ export class Post {
   })
   writer: User;
 
-  @Column({ length: 20 })
+  @Column()
   date: Date;
 }
