@@ -1,12 +1,18 @@
 import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
 
+@ApiTags('Hello')
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
-
   @Get()
+  @ApiOperation({ summary: 'Hello world!' })
+  @ApiOkResponse({ description: 'Hello world!' })
   getHello(): string {
-    return this.appService.getHello();
+    return 'Hello World!';
+  }
+
+  @Get('/error')
+  getError(): void {
+    throw new Error('Hi Sentry!');
   }
 }
