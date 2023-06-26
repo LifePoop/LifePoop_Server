@@ -11,7 +11,7 @@ export const mySqlOptions: MysqlConnectionOptions = {
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
-  entities: [__dirname + '/libs/entity/**/*.entity{.ts,.js}'],
+  entities: [__dirname + '/../libs/entity/**/*.entity{.ts,.js}'],
   timezone: 'Z',
   synchronize: true,
   migrationsRun: true,
@@ -20,3 +20,5 @@ export const mySqlOptions: MysqlConnectionOptions = {
   charset: 'utf8mb4',
   namingStrategy: new SnakeNamingStrategy(),
 };
+
+console.log(mySqlOptions.entities);
