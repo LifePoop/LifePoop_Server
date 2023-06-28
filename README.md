@@ -36,13 +36,13 @@ $ yarn install
 
 ```bash
 # development
-$ yarn run start
+$ docker-compose up -d
+$ yarn start
 
 # watch mode
-$ yarn run start:dev
+$ docker-compose up -d
+$ yarn start --watch
 
-# production mode
-$ yarn run start:prod
 ```
 
 ## Test
