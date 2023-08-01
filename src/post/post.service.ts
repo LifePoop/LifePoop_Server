@@ -35,7 +35,7 @@ export class PostService {
     });
   }
 
-  async findByUserAndDate(userId: number, date: Date): Promise<Post[]> {
+  async findByUserAndDate(userId: number, date: Date): Promise<Post> {
     console.log(date.toISOString().slice(0, 10));
     return await this.postRepository.findByUserAndDate(userId, date);
   }
