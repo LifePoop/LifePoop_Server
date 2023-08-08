@@ -16,7 +16,6 @@ import {
 } from '@nestjs/swagger';
 import { Auth } from 'src/auth/decorator/auth.decorator';
 import { CreatePostRequestDto } from './dto/request/create-post-reuqest.dto';
-import { Post as PostEntity } from '@app/entity/post/post.entity';
 import { PostResponseDto } from './dto/response/post-response.dto';
 import { UpdatePostRequestDto } from './dto/request/update-post-request.dto';
 
@@ -47,33 +46,22 @@ export class PostController {
   }
 
   @Auth()
-  @Delete(':userId/:date')
+  @Delete(':postId')
   @ApiOperation({ summary: '변기록 삭제' })
   @ApiOkResponse({ description: '변기록 삭제 성공 여부' })
-  async delete(
-    @Param('userId') userId: number,
-    @Param('date') date: Date,
-  ): Promise<void> {
-    return await this.postService.delete(userId, date);
+  async delete(@Param('postId') postId: number): Promise<void> {
+    return await this.postService.delete(postId);
   }
 
   @Auth()
-  @Put(':userId/:date')
+  @Put(':postId')
   @ApiOperation({ summary: '변기록 수정' })
   @ApiOkResponse({ description: '변기록 수정 성공 여부' })
   async update(
     @Body() { isGood, color, size, shape }: UpdatePostRequestDto,
-    @Param('userId') userId: number,
-    @Param('date') date: Date,
-  ): Promise<void> {
-    return await this.postService.update(
-      isGood,
-      color,
-      size,
-      shape,
-      userId,
-      date,
-    );
+    @Param('postId') postId: number,
+  ): Promise<PostResponseDto> {
+    return await this.postService.update(isGood, color, size, shape, postId);
   }
 
   @Auth()
