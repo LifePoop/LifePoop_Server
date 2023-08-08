@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Delete,
+  Put,
+} from '@nestjs/common';
 import { PostService } from './post.service';
 import {
   ApiCreatedResponse,
@@ -10,6 +18,7 @@ import { Auth } from 'src/auth/decorator/auth.decorator';
 import { CreatePostRequestDto } from './dto/request/create-post-reuqest.dto';
 import { Post as PostEntity } from '@app/entity/post/post.entity';
 import { PostResponseDto } from './dto/response/post-response.dto';
+import { UpdatePostRequestDto } from './dto/request/update-post-request.dto';
 
 @ApiTags('post')
 @Controller('post')
@@ -33,6 +42,36 @@ export class PostController {
       color,
       size,
       shape,
+      date,
+    );
+  }
+
+  @Auth()
+  @Delete(':userId/:date')
+  @ApiOperation({ summary: '변기록 삭제' })
+  @ApiOkResponse({ description: '변기록 삭제 성공 여부' })
+  async delete(
+    @Param('userId') userId: number,
+    @Param('date') date: Date,
+  ): Promise<void> {
+    return await this.postService.delete(userId, date);
+  }
+
+  @Auth()
+  @Put(':userId/:date')
+  @ApiOperation({ summary: '변기록 수정' })
+  @ApiOkResponse({ description: '변기록 수정 성공 여부' })
+  async update(
+    @Body() { isGood, color, size, shape }: UpdatePostRequestDto,
+    @Param('userId') userId: number,
+    @Param('date') date: Date,
+  ): Promise<void> {
+    return await this.postService.update(
+      isGood,
+      color,
+      size,
+      shape,
+      userId,
       date,
     );
   }

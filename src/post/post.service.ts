@@ -5,6 +5,19 @@ import { Raw } from 'typeorm';
 
 @Injectable()
 export class PostService {
+  update(
+    isGood: boolean,
+    color: number,
+    size: number,
+    shape: number,
+    userId: number,
+    date: Date,
+  ): void | PromiseLike<void> {
+    throw new Error('Method not implemented.');
+  }
+  delete(userId: number, date: any): void | PromiseLike<void> {
+    throw new Error('Method not implemented.');
+  }
   constructor(private readonly postRepository: PostRepository) {}
 
   async create(
