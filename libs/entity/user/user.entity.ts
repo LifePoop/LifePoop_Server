@@ -8,6 +8,7 @@ import {
 import { Post } from '../post/post.entity';
 import { Exclude } from 'class-transformer';
 import { AuthProvider } from '../types/auth-provider.enum';
+import { Friendship } from '../friendship/friendship.entity';
 
 @Entity('user')
 export class User {
@@ -37,6 +38,18 @@ export class User {
     nullable: true,
   })
   post: Post[];
+
+  @OneToMany(() => Friendship, (friendship) => friendship.from_user, {
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
+  fromFriendship: Friendship[];
+
+  @OneToMany(() => Friendship, (friendship) => friendship.to_user, {
+    createForeignKeyConstraints: false,
+    nullable: true,
+  })
+  toFriendship: Friendship[];
 
   @Exclude()
   @Column({ type: 'varchar', length: 300, nullable: true })
