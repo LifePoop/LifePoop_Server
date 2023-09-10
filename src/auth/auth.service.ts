@@ -15,6 +15,7 @@ import { User } from '@app/entity/user/user.entity';
 import { JwtPayload } from './types/jwt-payload.interface';
 import jwksClient from 'jwks-rsa';
 import { v4 as uuidv4 } from 'uuid';
+import { UpdateResult } from 'typeorm';
 
 @Injectable()
 export class AuthService {
@@ -51,7 +52,7 @@ export class AuthService {
     const accessToken = this.generateAccessToken(userId);
     const refreshToken = this.generateRefreshToken(userId);
 
-    this.setCurrentRefreshToken(userId, refreshToken);
+    await this.setCurrentRefreshToken(userId, refreshToken);
 
     return { accessToken, refreshToken, userId };
   }
@@ -165,7 +166,7 @@ export class AuthService {
       const accessToken = this.generateAccessToken(userId);
       const refreshToken = this.generateRefreshToken(userId);
 
-      this.setCurrentRefreshToken(userId, refreshToken);
+      await this.setCurrentRefreshToken(userId, refreshToken);
 
       return { accessToken, refreshToken, userId };
     } catch (error) {
@@ -200,8 +201,11 @@ export class AuthService {
     );
   }
 
-  setCurrentRefreshToken(userId: number, refreshToken: string): void {
-    this.userRepository.update(userId, { refreshToken: refreshToken });
+  setCurrentRefreshToken(
+    userId: number,
+    refreshToken: string,
+  ): Promise<UpdateResult> {
+    return this.userRepository.update(userId, { refreshToken: refreshToken });
   }
 
   async rotateRefreshToken(
@@ -212,7 +216,7 @@ export class AuthService {
       await this.checkRefreshToken(prevRefreshToken);
       const accessToken = this.generateAccessToken(userId);
       const refreshToken = this.generateRefreshToken(userId);
-      this.setCurrentRefreshToken(userId, refreshToken);
+      await this.setCurrentRefreshToken(userId, refreshToken);
       return { accessToken, refreshToken, userId };
     } catch {
       throw new UnauthorizedException('유효하지 않은 토큰입니다.');
