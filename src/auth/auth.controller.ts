@@ -123,10 +123,10 @@ export class AuthController {
 
   @Get('testingapi')
   @ApiExcludeEndpoint()
-  test(@Res({ passthrough: true }) res: Response) {
+  async test(@Res({ passthrough: true }) res: Response) {
     const accessToken = this.authService.generateAccessToken(1);
     const refreshToken = this.authService.generateRefreshToken(1);
-    this.authService.setCurrentRefreshToken(1, refreshToken);
+    await this.authService.setCurrentRefreshToken(1, refreshToken);
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       maxAge:
