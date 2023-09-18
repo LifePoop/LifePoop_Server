@@ -20,5 +20,3 @@ export const mySqlOptions: MysqlConnectionOptions = {
   charset: 'utf8mb4',
   namingStrategy: new SnakeNamingStrategy(),
 };
-
-console.log(mySqlOptions.entities);
