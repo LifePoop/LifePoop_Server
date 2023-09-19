@@ -1,5 +1,14 @@
+import { SexEnum } from '@app/entity/user/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDate, IsInt, IsNumber, IsString, Max, Min } from 'class-validator';
+import {
+  IsDate,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class UserResponseDto {
   @ApiProperty()
@@ -11,30 +20,30 @@ export class UserResponseDto {
 
   @IsString()
   @ApiProperty()
-  email!: string;
+  email?: string;
 
   @IsDate()
   @ApiProperty()
   birth!: Date;
 
-  @IsNumber()
-  @ApiProperty()
-  sex!: number;
+  @ApiProperty({ enum: SexEnum })
+  @IsEnum(SexEnum)
+  sex!: SexEnum;
 
   @IsNumber()
   @ApiProperty()
-  characterColor!: number;
+  characterColor?: number;
 
   @IsNumber()
   @ApiProperty()
-  characterShape!: number;
+  characterShape?: number;
 
   constructor(
     id: number,
     nickname: string,
     email: string,
     birth: Date,
-    sex: number,
+    sex: SexEnum,
     characterColor: number,
     characterShape: number,
   ) {
