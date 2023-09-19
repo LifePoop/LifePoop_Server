@@ -13,11 +13,15 @@ import { ConfigService } from '@nestjs/config';
 import {
   ApiBadRequestResponse,
   ApiBody,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiExcludeEndpoint,
   ApiNoContentResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiProperty,
+  ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -50,6 +54,8 @@ export class AuthController {
     description: '회원가입 성공',
     type: RegisterResponseBodyDto,
   })
+  @ApiConflictResponse({ description: '이미 존재하는 유저입니다.' })
+  @ApiBadRequestResponse({ description: '카카오/애플 로그인에 실패했습니다.' })
   @Post(':provider/register')
   async register(
     @Param() registerRequestParamDto: RegisterRequestParamDto,
@@ -107,7 +113,7 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @Auth()
+  @Auth('refresh')
   @ApiOperation({
     description:
       'refesh 토큰을 사용하여 access 토큰을 재발급합니다. RTR로 refresh 토큰도 재발급합니다,',
@@ -138,8 +144,8 @@ export class AuthController {
   }
 
   @Post('logout')
+  @Auth('access')
   @HttpCode(204)
-  @Auth()
   @ApiOperation({
     description:
       'refresh_token 쿠키를 삭제하고, 유저 테이블에 있는 refresh 토큰을 null로 수정합니다.',
@@ -212,31 +218,4 @@ export class AuthController {
   deprecatedKakaoRedirect(@UserRequest() accessToken: AccessToken): void {
     console.log(accessToken);
   }
-
-  @Get('testingapi')
-  @ApiExcludeEndpoint()
-  async test(@Res({ passthrough: true }) res: Response) {
-    const accessToken = this.authService.generateAccessToken(1);
-    const refreshToken = this.authService.generateRefreshToken(1);
-    await this.authService.setCurrentRefreshToken(1, refreshToken);
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      maxAge:
-        +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
-    });
-    return { accessToken };
-  }
-
-  // @Post('free')
-  // async freelogin(@Res({ passthrough: true }) res: Response) {
-  //   const { accessToken, refreshToken, userId } =
-  //     await this.authService.freelogin();
-
-  //   res.cookie('refresh_token', refreshToken, {
-  //     httpOnly: true,
-  //     maxAge:
-  //       +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
-  //   });
-  //   return { accessToken, userId };
-  // }
 }
