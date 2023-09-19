@@ -37,15 +37,7 @@ async function bootstrap() {
     .setTitle('LifePoop Api Server')
     .setDescription('API description')
     .setVersion('1.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        name: 'JWT',
-        in: 'header',
-      },
-      'access-token',
-    )
+    .addBearerAuth({ type: 'http' }, 'access-token')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document, {

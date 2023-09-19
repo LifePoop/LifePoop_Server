@@ -24,7 +24,7 @@ import { UpdatePostRequestDto } from './dto/request/update-post-request.dto';
 export class PostController {
   constructor(private readonly postService: PostService) {}
 
-  @Auth()
+  @Auth('access')
   @Post()
   @ApiOperation({ summary: '변기록 생성' })
   @ApiCreatedResponse({
@@ -45,7 +45,7 @@ export class PostController {
     );
   }
 
-  @Auth()
+  @Auth('access')
   @Delete(':postId')
   @ApiOperation({ summary: '변기록 삭제' })
   @ApiOkResponse({ description: '변기록 삭제 성공 여부' })
@@ -53,7 +53,7 @@ export class PostController {
     return await this.postService.delete(postId);
   }
 
-  @Auth()
+  @Auth('access')
   @Put(':postId')
   @ApiOperation({ summary: '변기록 수정' })
   @ApiOkResponse({ description: '변기록 수정 성공 여부' })
@@ -64,7 +64,7 @@ export class PostController {
     return await this.postService.update(isGood, color, size, shape, postId);
   }
 
-  @Auth()
+  @Auth('access')
   @Get(':userId')
   @ApiOperation({ summary: '특정 유저의 변기록 조회' })
   @ApiOkResponse({ description: '특정 유저의 변기록', type: [PostResponseDto] })
@@ -72,7 +72,7 @@ export class PostController {
     return await this.postService.findByUser(userId);
   }
 
-  @Auth()
+  @Auth('access')
   @Get('/:userId/:date')
   @ApiOperation({ summary: '특정 유저의 특정 일자 변기록 조회' })
   @ApiOkResponse({
