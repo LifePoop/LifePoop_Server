@@ -71,6 +71,10 @@ export class User {
   })
   toFriendship!: Friendship[];
 
+  @ApiProperty()
+  @Column()
+  inviteCode!: string;
+
   @Exclude()
   @Column({
     length: 300,
