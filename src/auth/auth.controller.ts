@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Param,
   Post,
   Req,
   Res,
@@ -15,6 +16,7 @@ import {
   ApiCreatedResponse,
   ApiExcludeEndpoint,
   ApiNoContentResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -29,14 +31,43 @@ import { KakaoAuthGuard } from './utils/guards/kakao-auth.guard';
 import { UserPayload } from './types/jwt-payload.interface';
 import { Auth } from './decorator/auth.decorator';
 import { WithdrawRequestDto } from './dto/withdraw-request.dto';
+import {
+  RegisterRequestBodyDto,
+  RegisterRequestParamDto,
+  RegisterResponseBodyDto,
+} from './dto/register.dto';
 
-@ApiTags('Auth')
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {}
+
+  @ApiOperation({ summary: '회원가입' })
+  @ApiOkResponse({
+    description: '회원가입 성공',
+    type: RegisterResponseBodyDto,
+  })
+  @Post(':provider/register')
+  async register(
+    @Param() registerRequestParamDto: RegisterRequestParamDto,
+    @Body() registerRequestBodyDto: RegisterRequestBodyDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<RegisterResponseBodyDto> {
+    const { accessToken, refreshToken } = await this.authService.register({
+      ...registerRequestParamDto,
+      ...registerRequestBodyDto,
+    });
+
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      maxAge:
+        +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
+    });
+    return { accessToken };
+  }
 
   @Post('*/login')
   @ApiOperation({ description: 'OAuth 로그인' })
@@ -53,13 +84,13 @@ export class AuthController {
     },
   })
   @ApiCreatedResponse({
-    description: '로그인/회원가입 성공',
+    description: '로그인 성공',
     type: LoginResponseDto,
   })
   @ApiBadRequestResponse({
     description: '유효하지 않은 제공자 혹은, 해당 SNS 로그인에 동의하지 않음',
   })
-  async oauthLogin(
+  async login(
     @Body() loginRequestdto: LoginRequestDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResponseDto> {
@@ -73,66 +104,6 @@ export class AuthController {
         +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
     });
     return { accessToken, userId };
-  }
-
-  @Post('free')
-  async freelogin(@Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken, userId } =
-      await this.authService.freelogin();
-
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      maxAge:
-        +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
-    });
-    return { accessToken, userId };
-  }
-
-  @Post('apple')
-  @ApiOperation({
-    summary: '애플 서버 통신 api',
-    description:
-      '애플에서 중요한 정보 혹은 업데이트를 위해 요구하는 endpoint입니다.',
-  })
-  contactApple() {
-    return 'ok';
-  }
-
-  // 정식 배포 전까지 액세스 토큰을 원활하게 탐색하기 위해 남겨놓았습니다.
-  @Get('kakao')
-  @UseGuards(KakaoAuthGuard)
-  @ApiExcludeEndpoint()
-  @ApiOperation({
-    deprecated: true,
-    description: '카카오 계정 테스트를 위한 임시 API',
-  })
-  deprecatedKakaoLogin(): string {
-    return 'success';
-  }
-
-  @Get('kakao/redirect')
-  @UseGuards(KakaoAuthGuard)
-  @ApiExcludeEndpoint()
-  @ApiOperation({
-    deprecated: true,
-    description: '카카오 계정 테스트를 위한 임시 API - Redirect',
-  })
-  deprecatedKakaoRedirect(@UserRequest() accessToken: AccessToken): void {
-    console.log(accessToken);
-  }
-
-  @Get('testingapi')
-  @ApiExcludeEndpoint()
-  async test(@Res({ passthrough: true }) res: Response) {
-    const accessToken = this.authService.generateAccessToken(1);
-    const refreshToken = this.authService.generateRefreshToken(1);
-    await this.authService.setCurrentRefreshToken(1, refreshToken);
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      maxAge:
-        +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
-    });
-    return { accessToken };
   }
 
   @Post('refresh')
@@ -206,4 +177,66 @@ export class AuthController {
     await this.authService.withdraw(withdrawRequestDto.accessToken);
     res.clearCookie('refresh_token');
   }
+
+  ///////////////////////////// 테스트용 /////////////////////////////
+
+  @Post('apple')
+  @ApiOperation({
+    summary: '애플 서버 통신 api',
+    description:
+      '애플에서 중요한 정보 혹은 업데이트를 위해 요구하는 endpoint입니다.',
+  })
+  contactApple() {
+    return 'ok';
+  }
+
+  // 정식 배포 전까지 액세스 토큰을 원활하게 탐색하기 위해 남겨놓았습니다.
+  @Get('kakao')
+  @UseGuards(KakaoAuthGuard)
+  @ApiExcludeEndpoint()
+  @ApiOperation({
+    deprecated: true,
+    description: '카카오 계정 테스트를 위한 임시 API',
+  })
+  deprecatedKakaoLogin(): string {
+    return 'success';
+  }
+
+  @Get('kakao/redirect')
+  @UseGuards(KakaoAuthGuard)
+  @ApiExcludeEndpoint()
+  @ApiOperation({
+    deprecated: true,
+    description: '카카오 계정 테스트를 위한 임시 API - Redirect',
+  })
+  deprecatedKakaoRedirect(@UserRequest() accessToken: AccessToken): void {
+    console.log(accessToken);
+  }
+
+  @Get('testingapi')
+  @ApiExcludeEndpoint()
+  async test(@Res({ passthrough: true }) res: Response) {
+    const accessToken = this.authService.generateAccessToken(1);
+    const refreshToken = this.authService.generateRefreshToken(1);
+    await this.authService.setCurrentRefreshToken(1, refreshToken);
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      maxAge:
+        +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
+    });
+    return { accessToken };
+  }
+
+  // @Post('free')
+  // async freelogin(@Res({ passthrough: true }) res: Response) {
+  //   const { accessToken, refreshToken, userId } =
+  //     await this.authService.freelogin();
+
+  //   res.cookie('refresh_token', refreshToken, {
+  //     httpOnly: true,
+  //     maxAge:
+  //       +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
+  //   });
+  //   return { accessToken, userId };
+  // }
 }

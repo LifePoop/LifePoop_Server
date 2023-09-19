@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -14,8 +16,11 @@ import { TokenResponse } from './types/token-response.interface';
 import { User } from '@app/entity/user/user.entity';
 import { JwtPayload } from './types/jwt-payload.interface';
 import jwksClient from 'jwks-rsa';
-import { v4 as uuidv4 } from 'uuid';
 import { UpdateResult } from 'typeorm';
+import {
+  RegisterRequestBodyDto,
+  RegisterRequestParamDto,
+} from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +29,69 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly userRepository: UserRepository,
   ) {}
+
+  async register(input: RegisterRequestBodyDto & RegisterRequestParamDto) {
+    const { oAuthAccessToken, provider, nickname, sex, birth } = input;
+    let snsId: string;
+    switch (provider) {
+      case AuthProvider.KAKAO: {
+        const response = await fetch('https://kapi.kakao.com/v2/user/me', {
+          headers: { Authorization: `Bearer ${oAuthAccessToken}` },
+        });
+        const {
+          id,
+          kakao_account: { email },
+        } = await response.json();
+        if (id === undefined) {
+          throw new BadRequestException('카카오 로그인에 실패했습니다.');
+        }
+        snsId = String(id);
+        break;
+      }
+      case AuthProvider.APPLE: {
+        const json = this.jwtService.decode(oAuthAccessToken, {
+          complete: true,
+        });
+        const kid = json['header'].kid;
+        const appleKey = await this.getAppleSigningKey(kid);
+        if (!appleKey) {
+          throw new BadRequestException('애플 로그인에 실패했습니다.');
+        }
+        const { sub, email } = this.jwtService.verify(oAuthAccessToken, {
+          algorithms: ['RS256'],
+          secret: appleKey,
+        });
+        if (sub === undefined) {
+          throw new BadRequestException('애플 로그인에 실패했습니다.');
+        }
+
+        snsId = String(sub);
+        break;
+      }
+    }
+
+    const existedUser = await this.userRepository.findOne({
+      where: { snsId },
+    });
+    if (existedUser) {
+      throw new ConflictException('이미 존재하는 유저입니다.');
+    }
+
+    const { id: userId } = await this.userRepository.save({
+      snsId,
+      nickname,
+      provider,
+      sex,
+      birth,
+    });
+
+    const accessToken = this.generateAccessToken(userId);
+    const refreshToken = this.generateRefreshToken(userId);
+
+    await this.setCurrentRefreshToken(userId, refreshToken);
+
+    return { accessToken, refreshToken };
+  }
 
   async login(data: LoginRequestDto): Promise<TokenResponse> {
     let userId: number;
@@ -77,6 +145,9 @@ export class AuthService {
     const existedUser = await this.userRepository.findOne({ where: { snsId } });
 
     if (!existedUser) {
+      throw new NotFoundException({
+        message: '존재하지 않는 유저입니다.',
+      });
       const randomNicknameReq = await axios.get(
         'https://nickname.hwanmoo.kr/?format=json&count=1&max_length=6',
       );
@@ -128,6 +199,9 @@ export class AuthService {
       });
 
       if (!existedUser) {
+        throw new NotFoundException({
+          message: '존재하지 않는 유저입니다.',
+        });
         const randomNicknameReq = await axios.get(
           'https://nickname.hwanmoo.kr/?format=json&count=1&max_length=6',
         );
@@ -143,34 +217,6 @@ export class AuthService {
 
       return existedUser.id;
     } catch {
-      throw new BadRequestException();
-    }
-  }
-
-  async freelogin() {
-    try {
-      const randomNicknameReq = await axios.get(
-        'https://nickname.hwanmoo.kr/?format=json&count=1&max_length=6',
-      );
-      const nickname = randomNicknameReq.data.words[0];
-
-      const { id: userId } = await this.userRepository.save({
-        snsId: uuidv4(),
-        nickname,
-        provider: AuthProvider.NYONG,
-        sex: 1,
-        characterColor: 1,
-        characterShape: 1,
-      });
-
-      const accessToken = this.generateAccessToken(userId);
-      const refreshToken = this.generateRefreshToken(userId);
-
-      await this.setCurrentRefreshToken(userId, refreshToken);
-
-      return { accessToken, refreshToken, userId };
-    } catch (error) {
-      console.log(error);
       throw new BadRequestException();
     }
   }
@@ -205,7 +251,7 @@ export class AuthService {
     userId: number,
     refreshToken: string,
   ): Promise<UpdateResult> {
-    return this.userRepository.update(userId, { refreshToken: refreshToken });
+    return this.userRepository.update(userId, { refreshToken });
   }
 
   async rotateRefreshToken(
@@ -292,4 +338,34 @@ export class AuthService {
       throw new UnauthorizedException('유효하지 않은 OAuth 요청입니다.');
     }
   }
+
+  ///////////////////////////// 테스트용 /////////////////////////////
+
+  // async freelogin() {
+  //   try {
+  //     const randomNicknameReq = await axios.get(
+  //       'https://nickname.hwanmoo.kr/?format=json&count=1&max_length=6',
+  //     );
+  //     const nickname = randomNicknameReq.data.words[0];
+
+  //     const { id: userId } = await this.userRepository.save({
+  //       snsId: uuidv4(),
+  //       nickname,
+  //       provider: AuthProvider.NYONG,
+  //       sex: 1,
+  //       characterColor: 1,
+  //       characterShape: 1,
+  //     });
+
+  //     const accessToken = this.generateAccessToken(userId);
+  //     const refreshToken = this.generateRefreshToken(userId);
+
+  //     await this.setCurrentRefreshToken(userId, refreshToken);
+
+  //     return { accessToken, refreshToken, userId };
+  //   } catch (error) {
+  //     console.log(error);
+  //     throw new BadRequestException();
+  //   }
+  // }
 }
