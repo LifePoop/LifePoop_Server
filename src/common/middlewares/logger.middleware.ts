@@ -20,9 +20,13 @@ export class LoggerMiddleware implements NestMiddleware {
       if (xForwardedFor?.includes('54.180.108.247')) {
         return;
       }
-      this.logger.log(
-        `${method} ${originalUrl} ${statusCode} ${xForwardedFor} ${userAgent}\n${body}\n${authorization}`,
-      );
+      const log = `${method} ${originalUrl} ${statusCode} ${xForwardedFor} ${userAgent}\nrequest body: ${body}\nauthorization headers: ${authorization}`;
+
+      if (statusCode >= 400) {
+        this.logger.error(log);
+      } else {
+        this.logger.log(log);
+      }
     });
 
     next();
