@@ -9,14 +9,7 @@ import { Post } from '../post/post.entity';
 import { Exclude } from 'class-transformer';
 import { AuthProvider } from '../types/auth-provider.enum';
 import { Friendship } from '../friendship/friendship.entity';
-import {
-  IsDate,
-  IsEnum,
-  IsNumber,
-  IsString,
-  Max,
-  MaxLength,
-} from 'class-validator';
+import { IsDate, IsEnum, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum SexEnum {
