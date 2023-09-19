@@ -79,12 +79,10 @@ export class AuthService {
     }
 
     let inviteCode = generateRandomString(8);
-    while (
-      inviteCode ===
-      (await this.userRepository.findOne({ where: { inviteCode } })).inviteCode
-    ) {
+    while ((await this.userRepository.count({ where: { inviteCode } })) > 0) {
       inviteCode = generateRandomString(8);
     }
+
     const { id: userId } = await this.userRepository.save({
       snsId,
       nickname,
@@ -349,34 +347,4 @@ export class AuthService {
       throw new UnauthorizedException('유효하지 않은 OAuth 요청입니다.');
     }
   }
-
-  ///////////////////////////// 테스트용 /////////////////////////////
-
-  // async freelogin() {
-  //   try {
-  //     const randomNicknameReq = await axios.get(
-  //       'https://nickname.hwanmoo.kr/?format=json&count=1&max_length=6',
-  //     );
-  //     const nickname = randomNicknameReq.data.words[0];
-
-  //     const { id: userId } = await this.userRepository.save({
-  //       snsId: uuidv4(),
-  //       nickname,
-  //       provider: AuthProvider.NYONG,
-  //       sex: 1,
-  //       characterColor: 1,
-  //       characterShape: 1,
-  //     });
-
-  //     const accessToken = this.generateAccessToken(userId);
-  //     const refreshToken = this.generateRefreshToken(userId);
-
-  //     await this.setCurrentRefreshToken(userId, refreshToken);
-
-  //     return { accessToken, refreshToken, userId };
-  //   } catch (error) {
-  //     console.log(error);
-  //     throw new BadRequestException();
-  //   }
-  // }
 }
