@@ -1,22 +1,20 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import {
-  DocumentBuilder,
-  SwaggerCustomOptions,
-  SwaggerModule,
-} from '@nestjs/swagger';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import expressBasicAuth from 'express-basic-auth';
 import cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
-import { HttpExceptionFilter } from './common/filter/http-exception.filter';
-import { AnyExceptionFilter } from './common/filter/any-exception.filter';
+import { AllExceptionsFilter } from './common/filter/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
   const configService = app.get(ConfigService);
-  app.useGlobalFilters(new HttpExceptionFilter(), new AnyExceptionFilter());
+
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
