@@ -10,7 +10,7 @@ import { UpdateUserRequestDto } from './dto/request/update-user-request.dto';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Auth()
+  @Auth('access')
   @Get(':userId')
   @ApiOperation({ summary: '특정 유저 조회' })
   @ApiOkResponse({ description: '특정 유저', type: UserResponseDto })
@@ -18,7 +18,7 @@ export class UserController {
     return await this.userService.findById(userId);
   }
 
-  @Auth()
+  @Auth('access')
   @Put(':userId')
   @ApiOperation({ summary: '특정 유저 수정' })
   @ApiOkResponse({ description: '변경된 유저 정보', type: UserResponseDto })
@@ -34,7 +34,7 @@ export class UserController {
     );
   }
 
-  @Auth()
+  @Auth('access')
   @Get('friendship/:userId')
   @ApiOperation({ summary: '특정 유저의 친구 조회' })
   @ApiOkResponse({ description: '특정 유저의 친구', type: [UserResponseDto] })
