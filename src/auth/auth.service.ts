@@ -21,6 +21,7 @@ import {
   RegisterRequestBodyDto,
   RegisterRequestParamDto,
 } from './dto/register.dto';
+import { generateRandomString } from 'libs/utils/utils';
 
 @Injectable()
 export class AuthService {
@@ -77,12 +78,22 @@ export class AuthService {
       throw new ConflictException('이미 존재하는 유저입니다.');
     }
 
+    let inviteCode = generateRandomString(8);
+    while (
+      inviteCode ===
+      (await this.userRepository.findOne({ where: { inviteCode } })).inviteCode
+    ) {
+      inviteCode = generateRandomString(8);
+    }
     const { id: userId } = await this.userRepository.save({
       snsId,
       nickname,
       provider,
       sex,
       birth,
+      characterColor: Math.floor(Math.random() * 5) + 1,
+      characterShape: Math.floor(Math.random() * 3) + 1,
+      inviteCode,
     });
 
     const accessToken = this.generateAccessToken(userId);
