@@ -1,10 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { UserRepository } from './user.repository';
 import { User } from '../../libs/entity/user/user.entity';
+import { Friendship } from '@app/entity/friendship/friendship.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly friendshipRepository: Repository<Friendship>,
+  ) {}
+
   findById(userId: number): Promise<User> {
     return this.userRepository.findOne({
       where: { id: userId },
@@ -27,5 +33,14 @@ export class UserService {
 
   findFriendship(userId: number): Promise<User[]> {
     return this.userRepository.findFriendship(userId);
+  }
+
+  async addFriendship(inviteCode: string, userId: number): Promise<Friendship> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const toUser = await this.userRepository.findOne({ where: { inviteCode } });
+    return await this.friendshipRepository.save({
+      from_user: user,
+      to_user: toUser,
+    });
   }
 }
