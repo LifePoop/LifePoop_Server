@@ -27,9 +27,6 @@ export class User {
   @Column({ length: 20 })
   nickname!: string;
 
-  @Column({ nullable: true })
-  email?: string;
-
   @ApiProperty()
   @IsDate()
   @Column()
