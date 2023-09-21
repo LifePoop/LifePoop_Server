@@ -19,6 +19,7 @@ import { CreatePostRequestDto } from './dto/request/create-post-reuqest.dto';
 import { PostResponseDto } from './dto/response/post-response.dto';
 import { UpdatePostRequestDto } from './dto/request/update-post-request.dto';
 import { UserRequest } from 'src/common/decorators/user-request.decorator';
+import { UserPayload } from 'src/auth/types/jwt-payload.interface';
 
 @ApiTags('post')
 @Controller('post')
@@ -35,7 +36,7 @@ export class PostController {
   async create(
     @Body()
     { isGood, color, size, shape, date }: CreatePostRequestDto,
-    @UserRequest('userId') writerId: number,
+    @UserRequest() { userId: writerId }: UserPayload,
   ): Promise<PostResponseDto> {
     return await this.postService.create(
       writerId,
