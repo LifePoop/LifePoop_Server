@@ -1,11 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsDate, IsInt, IsNumber } from 'class-validator';
+import { IsBoolean, IsDate, IsInt } from 'class-validator';
 
 export class CreatePostRequestDto {
-  @ApiProperty()
-  @IsNumber()
-  writerId: number;
-
   @ApiProperty()
   @IsBoolean()
   isGood: boolean;
