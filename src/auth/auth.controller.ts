@@ -212,4 +212,30 @@ export class AuthController {
   deprecatedKakaoRedirect(@UserRequest() accessToken: AccessToken): void {
     console.log(accessToken);
   }
+
+  @Post('test-login/:userId')
+  @ApiOperation({
+    summary: '테스트 로그인',
+    description: 'accessToken을 발급 받고, refresh_token을 쿠키에 저장',
+  })
+  @ApiCreatedResponse({
+    description: '테스트 로그인 성공',
+    type: LoginResponseBodyDto,
+  })
+  async testLogin(
+    @Param('userId') userId: number,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<LoginResponseBodyDto> {
+    const { accessToken, refreshToken } = await this.authService.testLogin(
+      userId,
+    );
+
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      maxAge:
+        +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
+    });
+
+    return { accessToken };
+  }
 }
