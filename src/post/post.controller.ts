@@ -85,7 +85,7 @@ export class PostController {
   async getByUserAndDate(
     @Param('userId') userId: number,
     @Param('date') date: Date,
-  ): Promise<PostResponseDto> {
+  ): Promise<PostResponseDto[]> {
     return await this.postService.findByUserAndDate(userId, date);
   }
 }
