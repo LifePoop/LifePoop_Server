@@ -28,7 +28,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
       where: { id: payload.id },
     });
     if (user === null) {
-      throw new NotFoundException();
+      throw new NotFoundException('존재하지 않는 유저입니다.');
     }
     return { userId: user.id };
   }

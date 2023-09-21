@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -8,13 +9,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { AuthProvider } from '@app/entity/types/auth-provider.enum';
 import { UserRepository } from '../user/user.repository';
-import { JwtSubjectType } from './types/jwtSubjectType';
 import { ConfigService } from '@nestjs/config';
-import { LoginRequestDto } from './dto/login-request.dto';
-import axios from 'axios';
 import { TokenResponse } from './types/token-response.interface';
-import { User } from '@app/entity/user/user.entity';
-import { JwtPayload } from './types/jwt-payload.interface';
 import jwksClient from 'jwks-rsa';
 import { UpdateResult } from 'typeorm';
 import {
@@ -22,6 +18,8 @@ import {
   RegisterRequestParamDto,
 } from './dto/register.dto';
 import { generateRandomString } from 'libs/utils/utils';
+import { LoginRequestBodyDto, LoginRequestParamDto } from './dto/login.dto';
+import { JwtSubjectEnum } from './types/jwt-subject.enum';
 
 @Injectable()
 export class AuthService {
@@ -31,50 +29,17 @@ export class AuthService {
     private readonly userRepository: UserRepository,
   ) {}
 
-  async register(input: RegisterRequestBodyDto & RegisterRequestParamDto) {
+  async register(
+    input: RegisterRequestBodyDto & RegisterRequestParamDto,
+  ): Promise<TokenResponse> {
     const { oAuthAccessToken, provider, nickname, sex, birth } = input;
-    let snsId: string;
-    switch (provider) {
-      case AuthProvider.KAKAO: {
-        const response = await fetch('https://kapi.kakao.com/v2/user/me', {
-          headers: { Authorization: `Bearer ${oAuthAccessToken}` },
-        });
-        const {
-          id,
-          kakao_account: { email },
-        } = await response.json();
-        if (id === undefined) {
-          throw new BadRequestException('카카오 로그인에 실패했습니다.');
-        }
-        snsId = String(id);
-        break;
-      }
-      case AuthProvider.APPLE: {
-        const json = this.jwtService.decode(oAuthAccessToken, {
-          complete: true,
-        });
-        const kid = json['header'].kid;
-        const appleKey = await this.getAppleSigningKey(kid);
-        if (!appleKey) {
-          throw new BadRequestException('애플 로그인에 실패했습니다.');
-        }
-        const { sub, email } = this.jwtService.verify(oAuthAccessToken, {
-          algorithms: ['RS256'],
-          secret: appleKey,
-        });
-        if (sub === undefined) {
-          throw new BadRequestException('애플 로그인에 실패했습니다.');
-        }
 
-        snsId = String(sub);
-        break;
-      }
-    }
+    const snsId = await this.#getOAuthUserInfo(oAuthAccessToken, provider);
 
     const existedUser = await this.userRepository.findOne({
       where: { snsId },
     });
-    if (existedUser) {
+    if (existedUser !== null) {
       throw new ConflictException('이미 존재하는 유저입니다.');
     }
 
@@ -97,88 +62,71 @@ export class AuthService {
     const accessToken = this.generateAccessToken(userId);
     const refreshToken = this.generateRefreshToken(userId);
 
-    await this.setCurrentRefreshToken(userId, refreshToken);
+    await this.#setCurrentRefreshToken(userId, refreshToken);
 
     return { accessToken, refreshToken };
   }
 
-  async login(data: LoginRequestDto): Promise<TokenResponse> {
-    let userId: number;
-    try {
-      switch (data.provider) {
-        case AuthProvider.KAKAO: {
-          userId = await this.getUserByKakaoAccessToken(data.accessToken);
-          break;
-        }
-        case AuthProvider.APPLE: {
-          userId = await this.getUserByAppleIdentifyToken(data.accessToken);
-          break;
-        }
-        default: {
-          throw new BadRequestException({
-            message: '제공하지 않는 OAuth 요청입니다.',
-          });
-        }
-      }
-    } catch (error) {
-      throw new BadRequestException({
-        message: '유효하지 않는 OAuth 요청입니다.',
-      });
-    }
+  async login(
+    input: LoginRequestParamDto & LoginRequestBodyDto,
+  ): Promise<TokenResponse> {
+    const { oAuthAccessToken, provider } = input;
 
-    const accessToken = this.generateAccessToken(userId);
-    const refreshToken = this.generateRefreshToken(userId);
+    const snsId = await this.#getOAuthUserInfo(oAuthAccessToken, provider);
 
-    await this.setCurrentRefreshToken(userId, refreshToken);
-
-    return { accessToken, refreshToken, userId };
-  }
-
-  async validateJwt(id: number): Promise<User> {
-    return await this.userRepository.findOneOrFail({ where: { id } });
-  }
-
-  async getUserByKakaoAccessToken(accessToken: string): Promise<number> {
-    const user = await axios.get('https://kapi.kakao.com/v2/user/me', {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    const existedUser = await this.userRepository.findOne({
+      where: { snsId },
     });
-
-    if (!user) {
-      throw new BadRequestException({
-        message: '카카오 로그인에 실패했습니다',
-      });
+    if (existedUser === null) {
+      throw new NotFoundException('존재하지 않는 유저입니다.');
     }
 
-    const kakaoData = user.data;
-    const snsId = String(kakaoData.id);
-    const existedUser = await this.userRepository.findOne({ where: { snsId } });
+    const accessToken = this.generateAccessToken(existedUser.id);
+    const refreshToken = this.generateRefreshToken(existedUser.id);
 
-    if (!existedUser) {
-      throw new NotFoundException({
-        message: '존재하지 않는 유저입니다.',
-      });
-      const randomNicknameReq = await axios.get(
-        'https://nickname.hwanmoo.kr/?format=json&count=1&max_length=6',
-      );
-      const nickname = randomNicknameReq.data.words[0];
-      const kakaoAccount = kakaoData.kakao_account;
-      const email =
-        kakaoAccount.has_email && !kakaoAccount.email_needs_agreement
-          ? kakaoAccount.email
-          : null;
-      const { id } = await this.userRepository.save({
-        snsId,
-        email,
-        nickname,
-        provider: AuthProvider.KAKAO,
-      });
-      return id;
-    }
+    await this.#setCurrentRefreshToken(existedUser.id, refreshToken);
 
-    return existedUser.id;
+    return { accessToken, refreshToken };
   }
 
-  async getAppleSigningKey(kid: string) {
+  async #getOAuthUserInfo(
+    oAuthAccessToken: string,
+    provider: AuthProvider,
+  ): Promise<string> {
+    switch (provider) {
+      case AuthProvider.KAKAO: {
+        const response = await fetch('https://kapi.kakao.com/v2/user/me', {
+          headers: { Authorization: `Bearer ${oAuthAccessToken}` },
+        });
+        const { id } = await response.json();
+        if (id === undefined) {
+          throw new BadRequestException('카카오 로그인에 실패했습니다.');
+        }
+        return String(id);
+      }
+      case AuthProvider.APPLE: {
+        const json = this.jwtService.decode(oAuthAccessToken, {
+          complete: true,
+        });
+        const kid = json['header'].kid;
+        const appleKey = await this.#getAppleSigningKey(kid);
+        if (!appleKey) {
+          throw new BadRequestException('애플 로그인에 실패했습니다. 1');
+        }
+        const { sub } = this.jwtService.verify(oAuthAccessToken, {
+          algorithms: ['RS256'],
+          secret: appleKey,
+        });
+        if (sub === undefined) {
+          throw new BadRequestException('애플 로그인에 실패했습니다. 2');
+        }
+
+        return String(sub);
+      }
+    }
+  }
+
+  async #getAppleSigningKey(kid: string): Promise<string> {
     // Public key 생성을 위해 요청 전송
     const client = jwksClient({
       jwksUri: 'https://appleid.apple.com/auth/keys',
@@ -189,52 +137,11 @@ export class AuthService {
     return key.getPublicKey();
   }
 
-  async getUserByAppleIdentifyToken(identifyToken: string) {
-    try {
-      // App에서 전달받은 identify token의 header 파싱
-      const json = this.jwtService.decode(identifyToken, { complete: true });
-      const kid = json['header'].kid;
-      const appleKey = await this.getAppleSigningKey(kid);
-
-      if (!appleKey) {
-        throw new BadRequestException();
-      }
-      const { sub: snsId, email } = this.jwtService.verify(identifyToken, {
-        algorithms: ['RS256'],
-        secret: appleKey,
-      });
-      const existedUser = await this.userRepository.findOne({
-        where: { snsId },
-      });
-
-      if (!existedUser) {
-        throw new NotFoundException({
-          message: '존재하지 않는 유저입니다.',
-        });
-        const randomNicknameReq = await axios.get(
-          'https://nickname.hwanmoo.kr/?format=json&count=1&max_length=6',
-        );
-        const nickname = randomNicknameReq.data.words[0];
-        const { id } = await this.userRepository.save({
-          snsId,
-          email,
-          nickname,
-          provider: AuthProvider.APPLE,
-        });
-        return id;
-      }
-
-      return existedUser.id;
-    } catch {
-      throw new BadRequestException();
-    }
-  }
-
   generateAccessToken(userId: number): string {
     return this.jwtService.sign(
       { id: userId },
       {
-        subject: JwtSubjectType.ACCESS,
+        subject: JwtSubjectEnum.ACCESS,
         secret: this.configService.get('JWT_ACCESS_TOKEN_SECRET'),
         expiresIn: `${this.configService.get(
           'JWT_ACCESS_TOKEN_EXPIRATION_TIME',
@@ -247,7 +154,7 @@ export class AuthService {
     return this.jwtService.sign(
       { id: userId },
       {
-        subject: JwtSubjectType.REFRESH,
+        subject: JwtSubjectEnum.REFRESH,
         secret: this.configService.get('JWT_REFRESH_TOKEN_SECRET'),
         expiresIn: `${this.configService.get(
           'JWT_REFRESH_TOKEN_EXPIRATION_TIME',
@@ -256,7 +163,7 @@ export class AuthService {
     );
   }
 
-  setCurrentRefreshToken(
+  #setCurrentRefreshToken(
     userId: number,
     refreshToken: string,
   ): Promise<UpdateResult> {
@@ -267,40 +174,29 @@ export class AuthService {
     userId: number,
     prevRefreshToken: string,
   ): Promise<TokenResponse> {
-    try {
-      await this.checkRefreshToken(prevRefreshToken);
-      const accessToken = this.generateAccessToken(userId);
-      const refreshToken = this.generateRefreshToken(userId);
-      await this.setCurrentRefreshToken(userId, refreshToken);
-      return { accessToken, refreshToken, userId };
-    } catch {
-      throw new UnauthorizedException('유효하지 않은 토큰입니다.');
-    }
-  }
-
-  async checkRefreshToken(refreshToken: string): Promise<void> {
-    const payload: JwtPayload = await this.jwtService.verifyAsync(
-      refreshToken,
-      {
-        secret: this.configService.get('JWT_REFRESH_TOKEN_SECRET'),
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userId,
+        refreshToken: prevRefreshToken,
       },
-    );
-    const { refreshToken: userRefreshToken } =
-      await this.userRepository.findOne({
-        where: { id: payload.id },
-        select: { refreshToken: true },
-      });
-    if (refreshToken !== userRefreshToken) {
-      throw new UnauthorizedException();
+    });
+
+    if (user === null) {
+      throw new ForbiddenException(
+        '유효하지 않은 접근입니다. 재로그인 해주세요.',
+      );
     }
+
+    const accessToken = this.generateAccessToken(userId);
+    const refreshToken = this.generateRefreshToken(userId);
+
+    await this.#setCurrentRefreshToken(userId, refreshToken);
+
+    return { accessToken, refreshToken };
   }
 
   async deleteRefreshToken(userId: number): Promise<void> {
-    try {
-      await this.userRepository.update(userId, { refreshToken: null });
-    } catch {
-      throw new BadRequestException();
-    }
+    await this.userRepository.update(userId, { refreshToken: null });
   }
 
   // TODO 향후 고도화

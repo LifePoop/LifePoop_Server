@@ -2,19 +2,15 @@ import { User } from '@app/entity/user/user.entity';
 import { ApiProperty, PickType } from '@nestjs/swagger';
 import { IsString } from 'class-validator';
 
-export class RegisterRequestParamDto extends PickType(User, ['provider']) {}
+export class LoginRequestParamDto extends PickType(User, ['provider']) {}
 
-export class RegisterRequestBodyDto extends PickType(User, [
-  'nickname',
-  'birth',
-  'sex',
-]) {
+export class LoginRequestBodyDto {
   @ApiProperty()
   @IsString()
   oAuthAccessToken: string;
 }
 
-export class RegisterResponseBodyDto {
+export class LoginResponseBodyDto {
   @ApiProperty()
   accessToken: string;
 }

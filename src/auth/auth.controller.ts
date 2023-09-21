@@ -1,11 +1,11 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   Param,
   Post,
-  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -16,20 +16,15 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiExcludeEndpoint,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
-  ApiProperty,
-  ApiResponse,
   ApiTags,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { UserRequest } from '../common/decorators/user-request.decorator';
 import { AuthService } from './auth.service';
-import { LoginResponseDto } from './dto/login-response.dto';
-import { LoginRequestDto } from './dto/login-request.dto';
 import { AccessToken } from './types/token-response.interface';
 import { KakaoAuthGuard } from './utils/guards/kakao-auth.guard';
 import { UserPayload } from './types/jwt-payload.interface';
@@ -40,6 +35,13 @@ import {
   RegisterRequestParamDto,
   RegisterResponseBodyDto,
 } from './dto/register.dto';
+import {
+  LoginRequestBodyDto,
+  LoginRequestParamDto,
+  LoginResponseBodyDto,
+} from './dto/login.dto';
+import { Cookies } from './decorator/cookies.decorator';
+import { RefreshResponseBodyDto } from './dto/refresh.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -49,14 +51,17 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
-  @ApiOperation({ summary: '회원가입' })
-  @ApiOkResponse({
+  @Post(':provider/register')
+  @ApiOperation({
+    summary: '회원가입',
+    description: 'accessToken을 발급 받고, refresh_token을 쿠키에 저장',
+  })
+  @ApiCreatedResponse({
     description: '회원가입 성공',
     type: RegisterResponseBodyDto,
   })
   @ApiConflictResponse({ description: '이미 존재하는 유저입니다.' })
   @ApiBadRequestResponse({ description: '카카오/애플 로그인에 실패했습니다.' })
-  @Post(':provider/register')
   async register(
     @Param() registerRequestParamDto: RegisterRequestParamDto,
     @Body() registerRequestBodyDto: RegisterRequestBodyDto,
@@ -75,83 +80,81 @@ export class AuthController {
     return { accessToken };
   }
 
-  @Post('*/login')
-  @ApiOperation({ description: 'OAuth 로그인' })
-  @ApiBody({
-    description: 'OAuth 액세스 토큰(AccessToken) 및 제공자(vendor)',
-    type: LoginRequestDto,
-    examples: {
-      loginRequestDto: {
-        value: {
-          accessToken: 'yg1wdaf(OAuth Access Token)',
-          provider: 'KAKAO|APPLE',
-        },
-      },
-    },
+  @Post(':provider/login')
+  @ApiOperation({
+    summary: '로그인',
+    description: 'accessToken을 발급 받고, refresh_token을 쿠키에 저장',
   })
   @ApiCreatedResponse({
     description: '로그인 성공',
-    type: LoginResponseDto,
+    type: LoginResponseBodyDto,
   })
-  @ApiBadRequestResponse({
-    description: '유효하지 않은 제공자 혹은, 해당 SNS 로그인에 동의하지 않음',
-  })
+  @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
+  @ApiBadRequestResponse({ description: '카카오/애플 로그인에 실패했습니다.' })
   async login(
-    @Body() loginRequestdto: LoginRequestDto,
+    @Param() loginRequestParamDto: LoginRequestParamDto,
+    @Body() loginRequestBodyDto: LoginRequestBodyDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<LoginResponseDto> {
-    const { accessToken, refreshToken, userId } = await this.authService.login(
-      loginRequestdto,
-    );
+  ): Promise<LoginResponseBodyDto> {
+    const { accessToken, refreshToken } = await this.authService.login({
+      ...loginRequestParamDto,
+      ...loginRequestBodyDto,
+    });
 
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       maxAge:
         +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
     });
-    return { accessToken, userId };
+    return { accessToken };
   }
 
-  @Post('refresh')
   @Auth('refresh')
+  @Post('refresh')
   @ApiOperation({
-    description:
-      'refesh 토큰을 사용하여 access 토큰을 재발급합니다. RTR로 refresh 토큰도 재발급합니다,',
+    summary: '토큰 재발급',
+    description: '쿠키에 있는 refresh_token으로 access/refresh 토큰 재발급',
   })
   @ApiCreatedResponse({
-    description: 'access token 재발급 성공',
-    type: LoginResponseDto,
+    description: '토큰 재발급 성공',
+    type: RefreshResponseBodyDto,
   })
-  @ApiUnauthorizedResponse({
+  @ApiForbiddenResponse({
     description:
-      '유효하지 않은 refresh token으로 access token 재발급에 실패했습니다.',
+      '해당 유저의 refresh_token이 아닌 token으로 재발급을 시도하므로, 강제 로그아웃(쿠키에 있는 refresh_token 삭제)',
   })
-  @ApiBadRequestResponse({ description: '유효하지 않은 요청입니다.' })
   async refresh(
     @UserRequest() { userId }: UserPayload,
-    @Req() req: Request,
+    @Cookies('refresh_token') prevRefreshToken: string,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<LoginResponseDto> {
-    const prevRefreshToken = req.cookies['refresh_token'];
-    const { accessToken, refreshToken } =
-      await this.authService.rotateRefreshToken(userId, prevRefreshToken);
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      maxAge:
-        +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
-    });
-    return { accessToken, userId };
+  ): Promise<RefreshResponseBodyDto> {
+    try {
+      const { accessToken, refreshToken } =
+        await this.authService.rotateRefreshToken(userId, prevRefreshToken);
+
+      res.cookie('refresh_token', refreshToken, {
+        httpOnly: true,
+        maxAge:
+          +this.configService.get('JWT_REFRESH_TOKEN_EXPIRATION_TIME') * 1000,
+      });
+
+      return { accessToken };
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        res.clearCookie('refresh_token');
+      }
+      throw error;
+    }
   }
 
-  @Post('logout')
   @Auth('access')
+  @Post('logout')
   @HttpCode(204)
   @ApiOperation({
-    description:
-      'refresh_token 쿠키를 삭제하고, 유저 테이블에 있는 refresh 토큰을 null로 수정합니다.',
+    summary: '로그아웃',
+    description: '쿠키에 있는 refresh_token 삭제',
   })
   @ApiNoContentResponse({ description: '로그아웃에 성공했습니다.' })
-  @ApiBadRequestResponse({ description: '유효하지 않은 요청입니다.' })
   async logout(
     @UserRequest() { userId }: UserPayload,
     @Res({ passthrough: true }) res: Response,
@@ -160,6 +163,7 @@ export class AuthController {
     res.clearCookie('refresh_token');
   }
 
+  @ApiExcludeEndpoint()
   @Post('withdraw')
   @HttpCode(204)
   @ApiBody({
@@ -171,7 +175,7 @@ export class AuthController {
       },
     },
   })
-  @ApiOperation({ description: '회원탈퇴' })
+  @ApiOperation({ summary: '회원탈퇴(WIP)' })
   @ApiNoContentResponse({ description: '회원탈퇴에 성공했습니다.' })
   @ApiBadRequestResponse({ description: '유효하지 않은 OAuth 요청입니다.' })
   async withdraw(
@@ -185,16 +189,6 @@ export class AuthController {
   }
 
   ///////////////////////////// 테스트용 /////////////////////////////
-
-  @Post('apple')
-  @ApiOperation({
-    summary: '애플 서버 통신 api',
-    description:
-      '애플에서 중요한 정보 혹은 업데이트를 위해 요구하는 endpoint입니다.',
-  })
-  contactApple() {
-    return 'ok';
-  }
 
   // 정식 배포 전까지 액세스 토큰을 원활하게 탐색하기 위해 남겨놓았습니다.
   @Get('kakao')
