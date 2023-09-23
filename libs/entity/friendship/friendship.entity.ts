@@ -1,4 +1,4 @@
-import { Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from '../user/user.entity';
 
 @Entity('friendship')
@@ -15,4 +15,7 @@ export class Friendship {
     createForeignKeyConstraints: false,
   })
   to_user: User;
+
+  @Column()
+  date!: Date;
 }
