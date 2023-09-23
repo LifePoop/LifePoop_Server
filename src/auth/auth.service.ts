@@ -20,6 +20,7 @@ import {
 import { generateRandomString } from 'libs/utils/utils';
 import { LoginRequestBodyDto, LoginRequestParamDto } from './dto/login.dto';
 import { JwtSubjectEnum } from './types/jwt-subject.enum';
+import { SexEnum } from '@app/entity/user/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -242,5 +243,44 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('유효하지 않은 OAuth 요청입니다.');
     }
+  }
+
+  async testLogin(testUserId: number): Promise<TokenResponse> {
+    const user = await this.userRepository.findOne({
+      where: { id: testUserId },
+    });
+
+    let userId: number;
+
+    if (user === null) {
+      let inviteCode = generateRandomString(8);
+      while ((await this.userRepository.count({ where: { inviteCode } })) > 0) {
+        inviteCode = generateRandomString(8);
+      }
+
+      const { id } = await this.userRepository.save({
+        id: testUserId,
+        snsId: `lifepoo_${testUserId}`,
+        nickname: `테스트계정_${testUserId}`,
+        provider:
+          testUserId % 2 === 0 ? AuthProvider.KAKAO : AuthProvider.APPLE,
+        sex: testUserId % 2 === 0 ? SexEnum.MALE : SexEnum.FEMALE,
+        birth: new Date('2000-04-04'),
+        characterColor: Math.floor(Math.random() * 5) + 1,
+        characterShape: Math.floor(Math.random() * 3) + 1,
+        inviteCode,
+      });
+
+      userId = id;
+    } else {
+      userId = user.id;
+    }
+
+    const accessToken = this.generateAccessToken(userId);
+    const refreshToken = this.generateRefreshToken(userId);
+
+    await this.#setCurrentRefreshToken(userId, refreshToken);
+
+    return { accessToken, refreshToken };
   }
 }
