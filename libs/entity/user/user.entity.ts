@@ -11,6 +11,7 @@ import { AuthProvider } from '../types/auth-provider.enum';
 import { Friendship } from '../friendship/friendship.entity';
 import { IsDate, IsEnum, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Story } from '../story/stroy.entity';
 
 export enum SexEnum {
   MALE = 'MALE',
@@ -86,4 +87,9 @@ export class User {
   @Index()
   @Column({ length: 100 })
   snsId!: string;
+
+  @OneToMany(() => Story, (story) => story.writer, {
+    createForeignKeyConstraints: false,
+  })
+  story!: Story[];
 }
