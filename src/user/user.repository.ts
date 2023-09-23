@@ -1,6 +1,6 @@
 import { User } from '@app/entity/user/user.entity';
 import { Injectable } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 
 @Injectable()
 export class UserRepository extends Repository<User> {
@@ -8,12 +8,22 @@ export class UserRepository extends Repository<User> {
     super(User, dataSource.createEntityManager());
   }
 
-  findFriendship(userId: number): Promise<User[]> {
-    return this.createQueryBuilder('user')
-      .leftJoinAndSelect('user.fromFriendship', 'fromFriendship')
-      .leftJoinAndSelect('user.toFriendship', 'toFriendship')
-      .where('fromFriendship.from_user_id = :userId', { userId })
-      .orWhere('toFriendship.to_user_id = :userId', { userId })
-      .getMany();
+  async findFriendship(userId: number): Promise<User[]> {
+    const rawResult = await this.query(
+      `
+      SELECT 
+        CASE
+          WHEN f.from_user_id = ? THEN f.to_user_id
+          WHEN f.to_user_id = ? THEN f.from_user_id
+        END AS friend_id
+      FROM friendship f
+      WHERE f.from_user_id = ? OR f.to_user_id = ?;
+      `,
+      [userId, userId, userId, userId],
+    );
+
+    const friendIds = rawResult.map((row) => row.friend_id);
+
+    return this.findBy({ id: In(friendIds) });
   }
 }
