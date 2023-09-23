@@ -19,6 +19,7 @@ export enum SexEnum {
 
 @Entity('user')
 export class User {
+  @ApiProperty()
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -40,9 +41,11 @@ export class User {
   })
   sex!: SexEnum;
 
+  @ApiProperty()
   @Column({ nullable: true })
   characterColor?: number;
 
+  @ApiProperty()
   @Column({ nullable: true })
   characterShape?: number;
 
