@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { UserRepository } from './user.repository';
 import { User } from '../../libs/entity/user/user.entity';
 import { Friendship } from '@app/entity/friendship/friendship.entity';
-import { Repository } from 'typeorm';
+import { FriendshipRepository } from './friendship.repository';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly friendshipRepository: Repository<Friendship>,
+    private readonly friendshipRepository: FriendshipRepository,
   ) {}
 
   findById(userId: number): Promise<User> {
@@ -41,6 +41,7 @@ export class UserService {
     return await this.friendshipRepository.save({
       from_user: user,
       to_user: toUser,
+      date: new Date(),
     });
   }
 }

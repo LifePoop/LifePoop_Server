@@ -6,6 +6,7 @@ import { UserResponseDto } from './dto/response/user-response.dto';
 import { UpdateUserRequestDto } from './dto/request/update-user-request.dto';
 import { UserRequest } from 'src/common/decorators/user-request.decorator';
 import { UserPayload } from 'src/auth/types/jwt-payload.interface';
+import { plainToInstance } from 'class-transformer';
 
 @ApiTags('user')
 @Controller('user')
@@ -13,11 +14,25 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Auth('access')
+  @Get('friendship')
+  @ApiOperation({ summary: '나의 친구 조회' })
+  @ApiOkResponse({ description: '나의 친구', type: [UserResponseDto] })
+  async getFriendship(
+    @UserRequest() { userId }: UserPayload,
+  ): Promise<UserResponseDto[]> {
+    const friendship = await this.userService.findFriendship(userId);
+
+    return plainToInstance(UserResponseDto, friendship);
+  }
+
+  @Auth('access')
   @Get(':userId')
   @ApiOperation({ summary: '특정 유저 조회' })
   @ApiOkResponse({ description: '특정 유저', type: UserResponseDto })
   async get(@Param('userId') userId: number): Promise<UserResponseDto> {
-    return await this.userService.findById(userId);
+    const user = await this.userService.findById(userId);
+
+    return plainToInstance(UserResponseDto, user);
   }
 
   @Auth('access')
@@ -28,22 +43,14 @@ export class UserController {
     @Body() { nickname, characterColor, characterShape }: UpdateUserRequestDto,
     @UserRequest() { userId }: UserPayload,
   ): Promise<UserResponseDto> {
-    return await this.userService.update(
+    const user = await this.userService.update(
       nickname,
       characterColor,
       characterShape,
       userId,
     );
-  }
 
-  @Auth('access')
-  @Get('friendship')
-  @ApiOperation({ summary: '나의 친구 조회' })
-  @ApiOkResponse({ description: '나의 친구', type: [UserResponseDto] })
-  async getFriendship(
-    @UserRequest() { userId }: UserPayload,
-  ): Promise<UserResponseDto[]> {
-    return await this.userService.findFriendship(userId);
+    return plainToInstance(UserResponseDto, user);
   }
 
   @Auth('access')

@@ -2,12 +2,11 @@ import { Module } from '@nestjs/common';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { UserRepository } from './user.repository';
-import { Friendship } from '@app/entity/friendship/friendship.entity';
-import { Repository } from 'typeorm';
+import { FriendshipRepository } from './friendship.repository';
 
 @Module({
   controllers: [UserController],
-  providers: [UserService, UserRepository, Repository<Friendship>],
+  providers: [UserService, UserRepository, FriendshipRepository],
   exports: [UserRepository],
 })
 export class UserModule {}
