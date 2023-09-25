@@ -1,14 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { StoryRepository } from './stroy.repository';
 import { Story } from '@app/entity/story/stroy.entity';
 import { In, MoreThan } from 'typeorm';
 import { UserStoryViewRepository } from './user-story-view.repository';
 import { FriendshipRepository } from 'src/user/friendship.repository';
-import {
-  GetFriendsStoriesResponseBodyElementDto,
-  GetFriendsStoriesResponseUserDto,
-} from './dto/get-friends-stories.dto';
+import { GetFriendsStoriesResponseBodyElementDto } from './dto/get-friends-stories.dto';
 import { plainToInstance } from 'class-transformer';
+import { GetStoryResponseBodyDto } from './dto/get-story.dto';
 
 @Injectable()
 export class StoryService {
@@ -51,7 +49,7 @@ export class StoryService {
       return this.storyRepository.findOne({
         where: {
           date: MoreThan(oneDayAgo),
-          writerId: friendId,
+          writer: { id: friendId },
         },
         order: { date: 'DESC' },
         relations: ['writer'],
@@ -60,25 +58,58 @@ export class StoryService {
     const recentStories = (await Promise.all(storiesPromises)).filter(Boolean); // filter(Boolean)은 null, undefined, false를 제거함
     if (recentStories.length === 0) return [];
 
-    const viewedStories = await this.userStoryViewRepository.find({
+    const userStoryViews = await this.userStoryViewRepository.find({
       where: {
         viewer: { id: userId },
         story: { id: In(recentStories.map((rs) => rs.id)) },
       },
+      relations: ['story'],
     });
 
     const result = recentStories.map((rs) => ({
-      id: rs.id,
-      isViewed: viewedStories.map((vs) => vs.id).includes(rs.id),
-      date: rs.date,
-      user: plainToInstance(GetFriendsStoriesResponseUserDto, rs.writer),
+      isViewed: userStoryViews.map((usv) => usv.story.id).includes(rs.id),
+      ...rs,
     }));
 
-    return result.sort((a, b) => {
+    const sortedResult = result.sort((a, b) => {
       if (a.isViewed !== b.isViewed) {
         return a.isViewed ? 1 : -1;
       }
       return b.date.getTime() - a.date.getTime();
+    });
+
+    return plainToInstance(
+      GetFriendsStoriesResponseBodyElementDto,
+      sortedResult,
+      {
+        enableImplicitConversion: true,
+      },
+    );
+  }
+
+  async getStoryAndMarkAsViewed(
+    storyId: number,
+    userId: number,
+  ): Promise<GetStoryResponseBodyDto> {
+    const story = await this.storyRepository.findOne({
+      where: { id: storyId },
+      relations: ['writer'],
+    });
+    if (!story) throw new NotFoundException('존재하지 않는 스토리');
+
+    const userStoryView = await this.userStoryViewRepository.findOne({
+      where: { viewer: { id: userId }, story: { id: storyId } },
+    });
+    if (userStoryView === null) {
+      await this.userStoryViewRepository.save({
+        viewer: { id: userId },
+        story: { id: storyId },
+        date: new Date(),
+      });
+    }
+
+    return plainToInstance(GetStoryResponseBodyDto, story, {
+      enableImplicitConversion: true,
     });
   }
 }

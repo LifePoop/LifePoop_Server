@@ -16,17 +16,17 @@ export class Story {
   @PrimaryGeneratedColumn()
   id!: number;
 
+  @ApiProperty()
   @Column()
   color!: number;
 
+  @ApiProperty()
   @Column()
   size!: number;
 
+  @ApiProperty()
   @Column()
   shape!: number;
-
-  @Column()
-  writerId!: number;
 
   @ManyToOne(() => User, (user) => user.story, {
     createForeignKeyConstraints: false,
