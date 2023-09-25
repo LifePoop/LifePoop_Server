@@ -9,9 +9,9 @@ export class GetFriendsStoriesResponseUserDto extends PickType(User, [
   'characterColor',
   'characterShape',
 ]) {
-  @Expose() nickname: string;
-  @Expose() characterColor: number;
-  @Expose() characterShape: number;
+  @Expose() nickname!: string;
+  @Expose() characterColor!: number;
+  @Expose() characterShape!: number;
 }
 
 export class GetFriendsStoriesResponseBodyElementDto extends PickType(Story, [
@@ -22,5 +22,5 @@ export class GetFriendsStoriesResponseBodyElementDto extends PickType(Story, [
   isViewed!: boolean;
 
   @ApiProperty()
-  user: GetFriendsStoriesResponseUserDto;
+  user!: GetFriendsStoriesResponseUserDto;
 }
