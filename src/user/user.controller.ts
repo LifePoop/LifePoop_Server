@@ -17,6 +17,7 @@ import {
   GetCheersRequestParamDto,
   GetCheersResponseBodyDto,
 } from './dto/get-cheers.dto';
+import { User } from '@app/entity/user/user.entity';
 
 @ApiTags('user')
 @Controller('user')
@@ -49,6 +50,17 @@ export class UserController {
     const user = await this.userService.findById(userId);
 
     return plainToInstance(UserResponseDto, user);
+  }
+
+  @Auth('access')
+  @Get()
+  @ApiOperation({ summary: '내 정보 조회' })
+  @ApiOkResponse({
+    description: '내 정보',
+    type: User,
+  })
+  getMe(@UserRequest() { userId }: UserPayload): Promise<User> {
+    return this.userService.findById(userId);
   }
 
   @Auth('access')
