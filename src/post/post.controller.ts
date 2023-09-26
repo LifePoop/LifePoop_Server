@@ -28,7 +28,10 @@ export class PostController {
 
   @Auth('access')
   @Post()
-  @ApiOperation({ summary: '변기록 생성' })
+  @ApiOperation({
+    summary: '변기록 생성',
+    description: '변기록 생성 후, 해당 변기록에 대한 스토리를 생성합니다.',
+  })
   @ApiCreatedResponse({
     description: '업로드 된 변기록',
     type: PostResponseDto,

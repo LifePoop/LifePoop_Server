@@ -3,6 +3,7 @@ import { UserRepository } from './user.repository';
 import { User } from '../../libs/entity/user/user.entity';
 import { Friendship } from '@app/entity/friendship/friendship.entity';
 import { FriendshipRepository } from './friendship.repository';
+import { In } from 'typeorm';
 
 @Injectable()
 export class UserService {
@@ -31,8 +32,12 @@ export class UserService {
     });
   }
 
-  findFriendship(userId: number): Promise<User[]> {
-    return this.userRepository.findFriendship(userId);
+  async findFriendship(userId: number): Promise<User[]> {
+    const friendshipIds = await this.friendshipRepository.findFriendshipIds(
+      userId,
+    );
+
+    return this.userRepository.findBy({ id: In(friendshipIds) });
   }
 
   async addFriendship(inviteCode: string, userId: number): Promise<Friendship> {
