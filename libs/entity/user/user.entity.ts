@@ -16,6 +16,7 @@ import { Story } from '../story/stroy.entity';
 export enum SexEnum {
   MALE = 'MALE',
   FEMALE = 'FEMALE',
+  OTHER = 'OTHER',
 }
 
 @Entity('user')
@@ -69,6 +70,7 @@ export class User {
   @Column()
   inviteCode!: string;
 
+  @ApiProperty()
   @Exclude()
   @Column({
     length: 300,
@@ -84,6 +86,7 @@ export class User {
   })
   provider!: AuthProvider;
 
+  @ApiProperty()
   @Index()
   @Column({ length: 100 })
   snsId!: string;
