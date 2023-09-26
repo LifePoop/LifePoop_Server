@@ -16,6 +16,7 @@ import { Story } from '../story/stroy.entity';
 export enum SexEnum {
   MALE = 'MALE',
   FEMALE = 'FEMALE',
+  OTHER = 'OTHER',
 }
 
 @Entity('user')
