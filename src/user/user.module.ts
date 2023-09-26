@@ -3,10 +3,16 @@ import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { UserRepository } from './user.repository';
 import { FriendshipRepository } from './friendship.repository';
+import { CheerRepository } from './cheer.repository';
 
 @Module({
   controllers: [UserController],
-  providers: [UserService, UserRepository, FriendshipRepository],
-  exports: [UserRepository, FriendshipRepository],
+  providers: [
+    UserService,
+    UserRepository,
+    FriendshipRepository,
+    CheerRepository,
+  ],
+  exports: [UserRepository, FriendshipRepository, CheerRepository],
 })
 export class UserModule {}
