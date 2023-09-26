@@ -39,5 +39,9 @@ export class GetStoryResponseBodyDto extends PickType(Story, [
 
   @ApiProperty()
   @Expose()
+  isCheered!: boolean;
+
+  @ApiProperty()
+  @Expose()
   writer!: GetStoryResponseUserDto;
 }

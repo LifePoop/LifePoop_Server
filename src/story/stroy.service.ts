@@ -7,6 +7,8 @@ import { FriendshipRepository } from 'src/user/friendship.repository';
 import { GetFriendsStoriesResponseBodyElementDto } from './dto/get-friends-stories.dto';
 import { plainToInstance } from 'class-transformer';
 import { GetStoryResponseBodyDto } from './dto/get-story.dto';
+import { CheerRepository } from 'src/user/cheer.repository';
+import { convertDayStart } from 'libs/utils/convert-day';
 
 @Injectable()
 export class StoryService {
@@ -14,6 +16,7 @@ export class StoryService {
     private readonly storyRepository: StoryRepository,
     private readonly userStoryViewRepository: UserStoryViewRepository,
     private readonly friendshipRepository: FriendshipRepository,
+    private readonly cheerRepository: CheerRepository,
   ) {}
 
   async createPostStory(
@@ -97,8 +100,20 @@ export class StoryService {
     });
     if (!story) throw new NotFoundException('존재하지 않는 스토리');
 
+    const userCheer = await this.cheerRepository.findOne({
+      where: {
+        fromUser: { id: userId },
+        toUser: { id: story.writer.id },
+        date: MoreThan(convertDayStart(new Date())),
+      },
+    });
+    const isCheered = userCheer === null ? false : true;
+
     const userStoryView = await this.userStoryViewRepository.findOne({
-      where: { viewer: { id: userId }, story: { id: storyId } },
+      where: {
+        viewer: { id: userId },
+        story: { id: storyId },
+      },
     });
     if (userStoryView === null) {
       await this.userStoryViewRepository.save({
@@ -108,8 +123,12 @@ export class StoryService {
       });
     }
 
-    return plainToInstance(GetStoryResponseBodyDto, story, {
-      enableImplicitConversion: true,
-    });
+    return plainToInstance(
+      GetStoryResponseBodyDto,
+      { ...story, isCheered },
+      {
+        enableImplicitConversion: true,
+      },
+    );
   }
 }
