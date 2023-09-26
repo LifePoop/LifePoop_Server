@@ -3,13 +3,18 @@ import { UserRepository } from './user.repository';
 import { User } from '../../libs/entity/user/user.entity';
 import { Friendship } from '@app/entity/friendship/friendship.entity';
 import { FriendshipRepository } from './friendship.repository';
-import { In } from 'typeorm';
+import { Between, In, MoreThan } from 'typeorm';
+import { CheerRepository } from './cheer.repository';
+import { Cheer } from '@app/entity/cheer/cheer.entity';
+import { convertDayEnd, convertDayStart } from 'libs/utils/convert-day';
+import { GetCheersResponseBodyDto } from './dto/get-cheers.dto';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly friendshipRepository: FriendshipRepository,
+    private readonly cheerRepository: CheerRepository,
   ) {}
 
   findById(userId: number): Promise<User> {
@@ -48,5 +53,59 @@ export class UserService {
       to_user: toUser,
       date: new Date(),
     });
+  }
+
+  async cheer(toUserId: number, fromUserId: number): Promise<void | Cheer> {
+    const toUser = await this.userRepository.findOne({
+      where: { id: toUserId },
+    });
+    const fromUser = await this.userRepository.findOne({
+      where: { id: fromUserId },
+    });
+
+    const todayCheer = await this.cheerRepository.findOne({
+      where: {
+        fromUser,
+        toUser,
+        date: MoreThan(convertDayStart(new Date())),
+      },
+    });
+
+    if (todayCheer === null) {
+      return await this.cheerRepository.save({
+        fromUser,
+        toUser,
+        date: new Date(),
+      });
+    }
+  }
+
+  async getCheers(
+    date: Date,
+    userId: number,
+  ): Promise<GetCheersResponseBodyDto> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    const cheers = await this.cheerRepository.find({
+      where: {
+        toUser: user,
+        date: Between(convertDayStart(date), convertDayEnd(date)),
+      },
+      order: { date: 'DESC' },
+      relations: ['fromUser'],
+    });
+
+    const thumbs = cheers.slice(0, 2).map(({ fromUser }) => ({
+      nickname: fromUser.nickname,
+      characterColor: fromUser.characterColor,
+      characterShape: fromUser.characterShape,
+    }));
+
+    return {
+      count: cheers.length,
+      thumbs,
+    };
   }
 }
