@@ -107,12 +107,11 @@ export class UserController {
   }
 
   @Auth('access')
-  @Get('cheer/:date')
-  @ApiOperation({ summary: '나의 특정 날짜 응원 조회 ' })
+  @Get(':userId/cheer/:date')
+  @ApiOperation({ summary: '특정 유저의 특정 일자 응원 조회 ' })
   @ApiOkResponse({ type: GetCheersResponseBodyDto })
   getCheers(
-    @Param() { date }: GetCheersRequestParamDto,
-    @UserRequest() { userId }: UserPayload,
+    @Param() { userId, date }: GetCheersRequestParamDto,
   ): Promise<GetCheersResponseBodyDto> {
     return this.userService.getCheers(date, userId);
   }
