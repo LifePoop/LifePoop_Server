@@ -30,7 +30,7 @@ export class StoryService {
       color,
       size,
       shape,
-      writerId,
+      writer: { id: writerId },
       date,
     });
 
