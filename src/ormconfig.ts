@@ -12,7 +12,7 @@ export const mySqlOptions: MysqlConnectionOptions = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
   entities: [__dirname + '/../libs/entity/**/*.entity{.ts,.js}'],
-  timezone: 'Z',
+  timezone: '+09:00',
   synchronize: true,
   migrationsRun: true,
   logging: process.env.NODE_ENV === 'development',
