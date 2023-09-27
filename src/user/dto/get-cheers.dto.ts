@@ -1,8 +1,13 @@
 import { Cheer } from '@app/entity/cheer/cheer.entity';
 import { User } from '@app/entity/user/user.entity';
 import { ApiProperty, PickType } from '@nestjs/swagger';
+import { IsNumber } from 'class-validator';
 
-export class GetCheersRequestParamDto extends PickType(Cheer, ['date']) {}
+export class GetCheersRequestParamDto extends PickType(Cheer, ['date']) {
+  @ApiProperty()
+  @IsNumber()
+  userId!: number;
+}
 
 export class GetCheersResponseThumbDto extends PickType(User, [
   'nickname',
