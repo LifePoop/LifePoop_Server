@@ -43,5 +43,9 @@ export class GetStoryResponseBodyDto extends PickType(Story, [
 
   @ApiProperty()
   @Expose()
+  todayPostCount!: number;
+
+  @ApiProperty()
+  @Expose()
   writer!: GetStoryResponseUserDto;
 }

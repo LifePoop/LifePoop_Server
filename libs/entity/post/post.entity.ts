@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  Index,
+} from 'typeorm';
 import { User } from '../user/user.entity';
 
 @Entity('post')
@@ -26,6 +32,7 @@ export class Post {
   })
   writer: User;
 
+  @Index()
   @Column()
   date: Date;
 }

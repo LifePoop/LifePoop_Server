@@ -9,6 +9,7 @@ import { plainToInstance } from 'class-transformer';
 import { GetStoryResponseBodyDto } from './dto/get-story.dto';
 import { CheerRepository } from 'src/user/cheer.repository';
 import { convertDayStart } from 'libs/utils/convert-day';
+import { PostRepository } from 'src/post/post.repository';
 
 @Injectable()
 export class StoryService {
@@ -17,6 +18,7 @@ export class StoryService {
     private readonly userStoryViewRepository: UserStoryViewRepository,
     private readonly friendshipRepository: FriendshipRepository,
     private readonly cheerRepository: CheerRepository,
+    private readonly postRepository: PostRepository,
   ) {}
 
   async createPostStory(
@@ -109,6 +111,13 @@ export class StoryService {
     });
     const isCheered = userCheer === null ? false : true;
 
+    const todayPostCount = await this.postRepository.count({
+      where: {
+        writer: { id: story.writer.id },
+        date: MoreThan(convertDayStart(new Date())),
+      },
+    });
+
     const userStoryView = await this.userStoryViewRepository.findOne({
       where: {
         viewer: { id: userId },
@@ -125,7 +134,7 @@ export class StoryService {
 
     return plainToInstance(
       GetStoryResponseBodyDto,
-      { ...story, isCheered },
+      { ...story, isCheered, todayPostCount },
       {
         enableImplicitConversion: true,
       },
