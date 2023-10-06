@@ -24,7 +24,7 @@ jobs:
       - name: Build and push Docker images backend api
         run: |
           docker build -t siontama/lifepoo:latest . --platform linux/x86_64
-          docker push 42world/lifepoo:latest
+          docker push siontama/lifepoo:latest
       - name: Deploy lifepoo
         uses: appleboy/ssh-action@master
         with:
