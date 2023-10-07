@@ -40,4 +40,4 @@ jobs:
             docker pull siontama/lifepoo:latest
             docker stop lifepoo
             docker rm lifepoo
-            docker run -d --name lifepoo -p 3000:3000 siontama/lifepoo:latest
+            docker run -d --name lifepoo -p 3000:3000 --env-file=./.env siontama/lifepoo:latest
