@@ -1,5 +1,12 @@
 version: '3.4'
 services:
+  api:
+    image: siontama/lifepoo:latest
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+
   db:
     image: mysql:8.0
     container_name: lifepoop-backend-db
