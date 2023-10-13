@@ -5,7 +5,6 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthProvider } from '@app/entity/types/auth-provider.enum';
@@ -213,38 +212,6 @@ export class AuthService {
     await this.userRepository.update(userId, { refreshToken: null });
   }
 
-  async withdraw(accessToken: string): Promise<void> {
-    try {
-      const userId = this.jwtService.decode(accessToken)['id'];
-
-      const { provider } = await this.userRepository.findOne({
-        where: { id: userId },
-      });
-
-      let url: string;
-      const method = 'GET';
-
-      switch (provider) {
-        case AuthProvider.KAKAO: {
-          url = 'https://kapi.kakao.com/v1/user/unlink';
-          break;
-        }
-        default: {
-          throw new BadRequestException();
-        }
-      }
-
-      await fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      await this.userRepository.softDelete(userId);
-    } catch {
-      throw new UnauthorizedException('유효하지 않은 OAuth 요청입니다.');
-    }
-  }
-
   async appleWithdraw(
     input: AppleWithdrawRequestBodyDto & UserPayload,
   ): Promise<void> {
@@ -299,6 +266,31 @@ export class AuthService {
     );
     if (revokeResponse.status !== HttpStatus.OK) {
       throw new BadRequestException('애플 로그아웃에 실패했습니다. 2');
+    }
+
+    await this.#clearUserHistory(userId);
+  }
+
+  async kakaoWithdraw(userPayload: UserPayload): Promise<void> {
+    const { userId } = userPayload;
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    const unlinkBody = await fetch('https://kapi.kakao.com/v1/user/unlink', {
+      method: 'POST',
+      headers: {
+        Authorization: `KakaoAK ${this.configService.get('KAKAO_ADMIN_KEY')}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        target_id_type: 'user_id',
+        target_id: user.snsId,
+      }),
+    }).then((res) => res.json());
+    if (unlinkBody.id !== user.snsId) {
+      throw new BadRequestException('카카오 로그아웃에 실패했습니다.');
     }
 
     await this.#clearUserHistory(userId);
