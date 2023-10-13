@@ -12,7 +12,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   ApiBadRequestResponse,
-  ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiExcludeEndpoint,
@@ -29,7 +28,7 @@ import { AccessToken } from './types/token-response.interface';
 import { KakaoAuthGuard } from './utils/guards/kakao-auth.guard';
 import { UserPayload } from './types/jwt-payload.interface';
 import { Auth } from './decorator/auth.decorator';
-import { WithdrawRequestDto } from './dto/withdraw-request.dto';
+
 import {
   RegisterRequestBodyDto,
   RegisterRequestParamDto,
@@ -42,6 +41,8 @@ import {
 } from './dto/login.dto';
 import { Cookies } from './decorator/cookies.decorator';
 import { RefreshResponseBodyDto } from './dto/refresh.dto';
+import { AppleWithdrawRequestBodyDto } from './dto/apple-withdraw.dto';
+import { AuthProvider } from '@app/entity/types/auth-provider.enum';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -163,28 +164,17 @@ export class AuthController {
     res.clearCookie('refresh_token');
   }
 
-  @ApiExcludeEndpoint()
-  @Post('withdraw')
+  @Auth('access')
+  @Post(`${AuthProvider.APPLE}/withdraw`)
   @HttpCode(204)
-  @ApiBody({
-    description: 'OAuth 액세스 토큰',
-    type: WithdrawRequestDto,
-    examples: {
-      withdrawRequestDto: {
-        value: { accessToken: 'yg1wdaf(Ticlmoa Access Token)' },
-      },
-    },
-  })
-  @ApiOperation({ summary: '회원탈퇴(WIP)' })
-  @ApiNoContentResponse({ description: '회원탈퇴에 성공했습니다.' })
-  @ApiBadRequestResponse({ description: '유효하지 않은 OAuth 요청입니다.' })
-  async withdraw(
-    @Body() withdrawRequestDto: WithdrawRequestDto,
+  @ApiOperation({ summary: '애플 회원 탈퇴' })
+  @ApiNoContentResponse({ description: '회원 탈퇴 성공' })
+  async appleWithdraw(
+    @Body() { authorizationCode }: AppleWithdrawRequestBodyDto,
+    @UserRequest() { userId }: UserPayload,
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
-    // TODO 향후에 액세스토큰 해결 하면 고도화 할 예정
-    // await this.authService.withdraw(userId, withdrawRequestDto.accessToken);
-    await this.authService.withdraw(withdrawRequestDto.accessToken);
+    await this.authService.appleWithdraw({ userId, authorizationCode });
     res.clearCookie('refresh_token');
   }
 
