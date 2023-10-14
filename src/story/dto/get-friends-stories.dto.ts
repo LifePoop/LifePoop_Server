@@ -1,7 +1,7 @@
 import { Story } from '@app/entity/story/stroy.entity';
 import { User } from '@app/entity/user/user.entity';
 import { ApiProperty, PickType } from '@nestjs/swagger';
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude, Expose, Type } from 'class-transformer';
 
 @Exclude()
 export class GetFriendsStoriesResponseUserDto extends PickType(User, [
@@ -14,19 +14,28 @@ export class GetFriendsStoriesResponseUserDto extends PickType(User, [
   @Expose() characterShape!: number;
 }
 
-@Exclude()
-export class GetFriendsStoriesResponseBodyElementDto extends PickType(Story, [
-  'id',
-  'date',
-]) {
-  @Expose() id!: number;
-  @Expose() date!: Date;
-
+export class GetFriendsStoriesResponseBodyElementDto {
   @ApiProperty()
-  @Expose()
-  isViewed!: boolean;
+  user!: GetFriendsStoriesResponseUserDto;
 
-  @ApiProperty()
-  @Expose()
-  writer!: GetFriendsStoriesResponseUserDto;
+  @ApiProperty({ type: [Story] })
+  @Type(() => Story)
+  stories!: Story[];
 }
+
+// @Exclude()
+// export class GetFriendsStoriesResponseBodyElementDto extends PickType(Story, [
+//   'id',
+//   'date',
+// ]) {
+//   @Expose() id!: number;
+//   @Expose() date!: Date;
+
+//   @ApiProperty()
+//   @Expose()
+//   isViewed!: boolean;
+
+//   @ApiProperty()
+//   @Expose()
+//   writer!: GetFriendsStoriesResponseUserDto;
+// }
