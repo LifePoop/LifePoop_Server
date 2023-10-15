@@ -2,9 +2,9 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpStatus,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthProvider } from '@app/entity/types/auth-provider.enum';
@@ -21,6 +21,14 @@ import { generateRandomString } from 'libs/utils/utils';
 import { LoginRequestBodyDto, LoginRequestParamDto } from './dto/login.dto';
 import { JwtSubjectEnum } from './types/jwt-subject.enum';
 import { SexEnum } from '@app/entity/user/user.entity';
+import { AppleWithdrawRequestBodyDto } from './dto/apple-withdraw.dto';
+import { UserPayload } from './types/jwt-payload.interface';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { CheerRepository } from 'src/user/cheer.repository';
+import { StoryRepository } from 'src/story/stroy.repository';
+import { PostRepository } from 'src/post/post.repository';
+import { FriendshipRepository } from 'src/user/friendship.repository';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +36,10 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private readonly userRepository: UserRepository,
+    private readonly cheerRepository: CheerRepository,
+    private readonly storyRepository: StoryRepository,
+    private readonly postRepository: PostRepository,
+    private readonly friendShipRepository: FriendshipRepository,
   ) {}
 
   async register(
@@ -200,49 +212,117 @@ export class AuthService {
     await this.userRepository.update(userId, { refreshToken: null });
   }
 
-  // TODO 향후 고도화
-  // async withdraw(userId: number, accessToken: string): Promise<void> {
-  async withdraw(accessToken: string): Promise<void> {
-    try {
-      // const { provider } = await this.userRepository.findOne({ where: { id: userId } });
-      // let url: string,
-      //   method = 'GET';
-      // switch (provider) {
-      //   case AuthProvider.KAKAO: {
-      //     url = 'https://kapi.kakao.com/v1/user/unlink';
-      //     break;
-      //   }
-      //   case AuthProvider.NAVER: {
-      //     url = `https://nid.naver.com/oauth2.0/token?grant_type=delete&client_id=${this.configService.get(
-      //       'NAVER_CLIENT_ID',
-      //     )}&client_secret=${this.configService.get(
-      //       'NAVER_SECRET',
-      //     )}&access_token=${accessToken}&service_provider=NAVER`;
-      //     break;
-      //   }
-      //   case AuthProvider.GOOGLE: {
-      //     url = `https://oauth2.googleapis.com/revoke?token=${accessToken}`;
-      //     method = 'POST';
-      //     break;
-      //   }
-      //   case AuthProvider.NYONG: {
-      //     await this.userRepository.softDelete(userId);
-      //     return;
-      //   }
-      //   default: {
-      //     throw new BadRequestException();
-      //   }
-      // }
-      // await axios({
-      //   url,
-      //   method,
-      //   headers: { Authorization: `Bearer ${accessToken}` },
-      // });
-      const userId = this.jwtService.decode(accessToken)['id'];
-      await this.userRepository.softDelete(userId);
-    } catch {
-      throw new UnauthorizedException('유효하지 않은 OAuth 요청입니다.');
+  async appleWithdraw(
+    input: AppleWithdrawRequestBodyDto & UserPayload,
+  ): Promise<void> {
+    const { authorizationCode, userId } = input;
+
+    const privateKey = readFileSync(
+      join(process.cwd(), 'bin', `AuthKey.p8`),
+    ).toString();
+
+    const token = this.jwtService.sign(
+      { aud: 'https://appleid.apple.com' },
+      {
+        header: {
+          alg: 'ES256',
+          kid: this.configService.get('APPLE_KID'),
+        },
+        subject: this.configService.get('APPLE_CLIENT_ID'),
+        expiresIn: 1000 * 60 * 5,
+        issuer: this.configService.get('APPLE_ISS'),
+        secret: privateKey,
+      },
+    );
+
+    const tokenResponse = await fetch('https://appleid.apple.com/auth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: this.configService.get('APPLE_CLIENT_ID'),
+        client_secret: token,
+        grant_type: 'authorization_code',
+        code: authorizationCode,
+      }),
+    });
+    if (tokenResponse.status !== HttpStatus.OK) {
+      throw new BadRequestException('애플 로그아웃에 실패했습니다. 1');
     }
+
+    const { access_token: accessToken } = await tokenResponse.json();
+
+    const revokeResponse = await fetch(
+      'https://appleid.apple.com/auth/revoke',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: this.configService.get('APPLE_CLIENT_ID'),
+          client_secret: token,
+          token: accessToken,
+          token_type_hint: 'access_token',
+        }),
+      },
+    );
+    if (revokeResponse.status !== HttpStatus.OK) {
+      throw new BadRequestException('애플 로그아웃에 실패했습니다. 2');
+    }
+
+    await this.#clearUserHistory(userId);
+  }
+
+  async kakaoWithdraw(userPayload: UserPayload): Promise<void> {
+    const { userId } = userPayload;
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    const unlinkBody = await fetch('https://kapi.kakao.com/v1/user/unlink', {
+      method: 'POST',
+      headers: {
+        Authorization: `KakaoAK ${this.configService.get('KAKAO_ADMIN_KEY')}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        target_id_type: 'user_id',
+        target_id: user.snsId,
+      }),
+    }).then((res) => res.json());
+    if (unlinkBody.id !== user.snsId) {
+      throw new BadRequestException('카카오 로그아웃에 실패했습니다.');
+    }
+
+    await this.#clearUserHistory(userId);
+  }
+
+  async #clearUserHistory(userId: number): Promise<void> {
+    const stories = await this.storyRepository.find({
+      where: { writer: { id: userId } },
+    });
+
+    const posts = await this.postRepository.find({
+      where: { writer: { id: userId } },
+    });
+
+    const cheers = await this.cheerRepository.find({
+      where: [{ fromUser: { id: userId } }, { toUser: { id: userId } }],
+    });
+
+    const friendships = await this.friendShipRepository.find({
+      where: [{ from_user: { id: userId } }, { to_user: { id: userId } }],
+    });
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    // 다 찾아오면 일괄 삭제
+    await this.userRepository.remove(user);
+    await this.friendShipRepository.remove(friendships);
+    await this.cheerRepository.remove(cheers);
+    await this.storyRepository.remove(stories);
+    await this.postRepository.remove(posts);
   }
 
   async testLogin(testUserId: number): Promise<TokenResponse> {

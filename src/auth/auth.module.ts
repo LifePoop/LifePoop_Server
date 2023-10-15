@@ -8,6 +8,8 @@ import { UserModule } from '../user/user.module';
 import { KakaoStrategy } from './utils/strategies/kakato.strategy';
 import { JwtAccessStrategy } from './utils/strategies/jwt-access.strategy';
 import { JwtRefreshStrategy } from './utils/strategies/jwt-refresh.strategy';
+import { StoryModule } from 'src/story/story.module';
+import { PostModule } from 'src/post/post.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { JwtRefreshStrategy } from './utils/strategies/jwt-refresh.strategy';
       inject: [ConfigService],
     }),
     UserModule,
+    StoryModule,
+    PostModule,
   ],
   controllers: [AuthController],
   providers: [
