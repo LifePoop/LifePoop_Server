@@ -1,8 +1,8 @@
 FROM node:20-alpine3.17
 
-COPY . .
+COPY . ./app
 
-RUN yarn install
-RUN yarn build
+RUN cd app && yarn install
+RUN cd app && yarn build
 
-ENTRYPOINT ["node", "dist/src/main.js"]
+ENTRYPOINT ["node", "app/dist/src/main.js"]
