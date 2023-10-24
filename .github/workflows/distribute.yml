@@ -35,7 +35,7 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           port: ${{ secrets.SERVER_PORT }}
           key: ${{ secrets.SERVER_KEY}}
-          timeout: 60s
+          timeout: 120s
           script: |
             cd ~/LifePoop_Server
             docker pull siontama/lifepoo:latest
