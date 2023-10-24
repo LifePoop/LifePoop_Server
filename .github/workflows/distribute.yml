@@ -40,5 +40,6 @@ jobs:
             cd ~/LifePoop_Server
             docker pull siontama/lifepoo:latest
             docker-compose stop api
+            # docker-compose start api # 기존 이미지로 서버가 뜸
             docker-compose up -d api
-          debug: true
+            docker image prune -f # 이미지가 업데이트 되었으므로 이전 이미지 삭제
