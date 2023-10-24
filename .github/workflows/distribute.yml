@@ -41,3 +41,4 @@ jobs:
             docker pull siontama/lifepoo:latest
             docker-compose stop api
             docker-compose up -d api
+          debug: true
