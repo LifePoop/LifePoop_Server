@@ -40,4 +40,4 @@ jobs:
             cd ~/LifePoop_Server
             docker pull siontama/lifepoo:latest
             docker-compose stop api
-            docker-compose start api
+            docker-compose up -d api

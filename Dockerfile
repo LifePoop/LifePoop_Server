@@ -1,8 +1,10 @@
 FROM node:20-alpine3.17
 
+WORKDIR /app
+
 COPY . ./app
 
-RUN cd app && yarn install
-RUN cd app && yarn build
+RUN yarn install
+RUN yarn build
 
-ENTRYPOINT ["node", "app/dist/src/main.js"]
+ENTRYPOINT ["node", "dist/src/main.js"]
