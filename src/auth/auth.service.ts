@@ -67,8 +67,8 @@ export class AuthService {
       provider,
       sex,
       birth,
-      characterColor: Math.floor(Math.random() * 5) + 1,
-      characterShape: Math.floor(Math.random() * 3) + 1,
+      characterColor: 1,
+      characterShape: 1,
       inviteCode,
     });
 
