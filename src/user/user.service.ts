@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { UserRepository } from './user.repository';
 import { User } from '../../libs/entity/user/user.entity';
 import { Friendship } from '@app/entity/friendship/friendship.entity';
@@ -46,8 +50,16 @@ export class UserService {
   }
 
   async addFriendship(inviteCode: string, userId: number): Promise<Friendship> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
     const toUser = await this.userRepository.findOne({ where: { inviteCode } });
+    if (toUser === null) {
+      throw new BadRequestException('초대코드가 유효하지 않습니다.');
+    }
+    if (userId === toUser.id) {
+      throw new BadRequestException('자기 자신을 추가할 수 없습니다.');
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+
     return await this.friendshipRepository.save({
       from_user: user,
       to_user: toUser,
