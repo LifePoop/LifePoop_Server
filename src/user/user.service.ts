@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -52,10 +53,20 @@ export class UserService {
   async addFriendship(inviteCode: string, userId: number): Promise<Friendship> {
     const toUser = await this.userRepository.findOne({ where: { inviteCode } });
     if (toUser === null) {
-      throw new BadRequestException('초대코드가 유효하지 않습니다.');
+      throw new NotFoundException('초대코드가 유효하지 않습니다.');
     }
     if (userId === toUser.id) {
       throw new BadRequestException('자기 자신을 추가할 수 없습니다.');
+    }
+
+    const existingFriendship = await this.friendshipRepository.findOne({
+      where: [
+        { from_user: { id: userId }, to_user: { id: toUser.id } },
+        { from_user: { id: toUser.id }, to_user: { id: userId } }, // 중복 관계 검사 추가
+      ],
+    });
+    if (existingFriendship !== null) {
+      throw new ConflictException('이미 친구입니다.');
     }
 
     const user = await this.userRepository.findOne({ where: { id: userId } });
