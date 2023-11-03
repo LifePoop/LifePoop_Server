@@ -68,7 +68,7 @@ export class AuthService {
       sex,
       birth,
       characterColor: 0,
-      characterShape: 0,
+      characterShape: 1,
       inviteCode,
     });
 
