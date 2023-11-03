@@ -289,7 +289,7 @@ export class AuthService {
         target_id: user.snsId,
       }),
     }).then((res) => res.json());
-    if (unlinkBody.id !== user.snsId) {
+    if (String(unlinkBody.id) !== user.snsId) {
       throw new BadRequestException('카카오 로그아웃에 실패했습니다.');
     }
 
