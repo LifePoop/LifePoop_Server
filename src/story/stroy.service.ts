@@ -6,6 +6,8 @@ import { FriendshipRepository } from 'src/user/friendship.repository';
 import { plainToInstance } from 'class-transformer';
 import { UserRepository } from 'src/user/user.repository';
 import { GetFriendsStoriesResponseBodyElementDto } from './dto/get-friends-stories.dto';
+import { convertDayStart } from 'libs/utils/convert-day';
+import { CheerRepository } from 'src/user/cheer.repository';
 
 @Injectable()
 export class StoryService {
@@ -13,6 +15,7 @@ export class StoryService {
     private readonly storyRepository: StoryRepository,
     private readonly friendshipRepository: FriendshipRepository,
     private readonly userRepository: UserRepository,
+    private readonly cheerRepository: CheerRepository,
   ) {}
 
   async createPostStory(
@@ -47,6 +50,16 @@ export class StoryService {
         where: { id: friendshipId },
       });
 
+      // 위 user에게 userId의 유저가 오늘 응원을 했는지 확인
+      const userCheer = await this.cheerRepository.findOne({
+        where: {
+          fromUser: { id: userId },
+          toUser: { id: friendshipId },
+          date: MoreThan(convertDayStart(new Date())),
+        },
+      });
+      const isCheered = userCheer === null ? false : true;
+
       const stories = await this.storyRepository.find({
         where: {
           date: MoreThan(oneDayAgo),
@@ -57,7 +70,7 @@ export class StoryService {
 
       if (stories.length === 0) return null;
 
-      return { user, stories };
+      return { user: { ...user, isCheered }, stories };
     });
 
     const results = (await Promise.all(friendshipsStories)).filter(Boolean); // filter(Boolean)은 null, undefined, false를 제거함
