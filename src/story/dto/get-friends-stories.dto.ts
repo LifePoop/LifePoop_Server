@@ -12,6 +12,10 @@ export class GetFriendsStoriesResponseUserDto extends PickType(User, [
   @Expose() nickname!: string;
   @Expose() characterColor!: number;
   @Expose() characterShape!: number;
+
+  @ApiProperty()
+  @Expose()
+  isCheered!: boolean;
 }
 
 export class GetFriendsStoriesResponseBodyElementDto {
