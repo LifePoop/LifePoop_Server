@@ -10,6 +10,7 @@ export class GetCheersRequestParamDto extends PickType(Cheer, ['date']) {
 }
 
 export class GetCheersResponseThumbDto extends PickType(User, [
+  'id',
   'nickname',
   'characterColor',
   'characterShape',
