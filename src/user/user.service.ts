@@ -121,6 +121,7 @@ export class UserService {
     });
 
     const thumbs = cheers.slice(0, 2).map(({ fromUser }) => ({
+      id: fromUser.id,
       nickname: fromUser.nickname,
       characterColor: fromUser.characterColor,
       characterShape: fromUser.characterShape,
