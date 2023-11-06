@@ -5,10 +5,12 @@ import { Exclude, Expose, Type } from 'class-transformer';
 
 @Exclude()
 export class GetFriendsStoriesResponseUserDto extends PickType(User, [
+  'id',
   'nickname',
   'characterColor',
   'characterShape',
 ]) {
+  @Expose() id!: number;
   @Expose() nickname!: string;
   @Expose() characterColor!: number;
   @Expose() characterShape!: number;
