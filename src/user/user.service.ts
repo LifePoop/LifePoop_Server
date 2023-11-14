@@ -78,6 +78,20 @@ export class UserService {
     });
   }
 
+  async deleteFriendship(userId: number, friendId: number): Promise<void> {
+    const friendship = await this.friendshipRepository.findOne({
+      where: [
+        { from_user: { id: userId }, to_user: { id: friendId } },
+        { from_user: { id: friendId }, to_user: { id: userId } },
+      ],
+    });
+    if (friendship === null) {
+      throw new NotFoundException('친구 관계가 아닙니다.');
+    }
+
+    await this.friendshipRepository.delete(friendship.id);
+  }
+
   async cheer(toUserId: number, fromUserId: number): Promise<void | Cheer> {
     const toUser = await this.userRepository.findOne({
       where: { id: toUserId },
