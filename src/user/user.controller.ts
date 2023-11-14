@@ -1,8 +1,18 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { Auth } from 'src/auth/decorator/auth.decorator';
 import {
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -93,6 +103,18 @@ export class UserController {
     @UserRequest() { userId }: UserPayload,
   ): Promise<void> {
     await this.userService.addFriendship(inviteCode, userId);
+  }
+
+  @Auth('access')
+  @HttpCode(204)
+  @Delete('friendship/:friendId')
+  @ApiOperation({ summary: '친구 삭제' })
+  @ApiNoContentResponse({ description: '친구 삭제 성공' })
+  async deleteFriendship(
+    @Param('friendId') friendId: number,
+    @UserRequest() { userId }: UserPayload,
+  ): Promise<void> {
+    await this.userService.deleteFriendship(userId, friendId);
   }
 
   @Auth('access')
