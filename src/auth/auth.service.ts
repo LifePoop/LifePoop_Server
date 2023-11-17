@@ -346,7 +346,7 @@ export class AuthService {
           testUserId % 2 === 0 ? AuthProvider.KAKAO : AuthProvider.APPLE,
         sex: testUserId % 2 === 0 ? SexEnum.MALE : SexEnum.FEMALE,
         birth: new Date('2000-04-04'),
-        characterColor: Math.floor(Math.random() * 5) + 1,
+        characterColor: Math.floor(Math.random() * 4) + 1,
         characterShape: Math.floor(Math.random() * 2) + 1,
         inviteCode,
       });
