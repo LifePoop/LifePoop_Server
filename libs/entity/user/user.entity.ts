@@ -30,16 +30,17 @@ export class User {
   @Column({ length: 20 })
   nickname!: string;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty()
   @IsDate()
-  @Column()
+  @Column({ nullable: true })
   birth?: Date;
 
-  @ApiProperty({ enum: SexEnum, nullable: true })
+  @ApiProperty({ enum: SexEnum })
   @IsEnum(SexEnum)
   @Column({
     type: 'enum',
     enum: SexEnum,
+    nullable: true,
   })
   sex?: SexEnum;
 
